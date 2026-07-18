@@ -1,0 +1,14 @@
+[build-system]
+requires = ["maturin>=1.8,<2"]
+build-backend = "maturin"
+
+[project]
+name = "architect-c4-app"
+version = "0.1.0"
+requires-python = ">=3.12"
+description = "PyO3 façade for architect-c4"
+
+[tool.maturin]
+features = ["extension-module"]
+module-name = "architect_c4._native"
+python-source = "../../python"

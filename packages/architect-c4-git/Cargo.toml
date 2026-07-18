@@ -1,0 +1,16 @@
+[package]
+name = "architect-c4-git"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "GitPort (hex) with GixAdapter — commit for ADR fixation, no push"
+
+[dependencies]
+architect-c4-domain = { workspace = true }
+gix = { workspace = true }
+gix-date = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

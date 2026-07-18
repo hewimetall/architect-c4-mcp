@@ -1,0 +1,32 @@
+name: mermaid_viewer_theme
+description: |
+  Apply a readable Mermaid theme for architect-c4 viewer (classDiagram + C4).
+  Prefer pastel fills (#ddd6fe) with dark text (#1e1b4b), soft slate lines (#94a3b8),
+  and a structured Legend panel. Use when diagrams look ugly or unreadable.
+arguments:
+  - name: layer
+    required: false
+    default: "code"
+    description: context|container|component|code
+template: |
+  Improve Mermaid visuals for architect-c4 layer={{layer}}.
+
+  From Mermaid docs + mermaid-studio skill:
+  - Only theme `base` accepts themeVariables
+  - classDiagram: light indigo fill `#e0e7ff`, dark text `#1e293b`, border `#6366f1`
+  - Soft lines: lineColor `#94a3b8` (never harsh black)
+  - Avoid yellow `note for` stickies — use `class Alias["Display Name"]`
+  - HTML-escape Mermaid in `<pre>` so `<<stereo>>` / `<|--` survive
+
+  Verify via ONE GraphQL call:
+  {
+    search_theme: search(q: "get_layer_diagram mermaid") { server tool description }
+    code: architectC4 {
+      getLayerDiagram(workspaceId: "WORKSPACE", layer: "{{layer}}", parentId: "PARENT") { json }
+    }
+  }
+
+  Sources:
+  - https://mermaid.js.org/config/theming.html
+  - .cursor/skills/mermaid-studio/
+  - .cursor/skills/frontend-design/

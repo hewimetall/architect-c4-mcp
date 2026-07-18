@@ -1,0 +1,53 @@
+[workspace]
+resolver = "2"
+members = [
+  "packages/architect-c4-domain",
+  "packages/architect-c4-revision",
+  "packages/architect-c4-session",
+  "packages/architect-c4-model",
+  "packages/architect-c4-git",
+  "packages/architect-c4-adr",
+  "packages/architect-c4-flow",
+  "packages/architect-c4-policy",
+  "packages/architect-c4-validate",
+  "packages/architect-c4-scene",
+  "packages/architect-c4-render",
+  "packages/architect-c4-wasm",
+  "packages/architect-c4-app",
+  "packages/architect-c4-queue",
+  "packages/architect-c4-tomlio",
+]
+
+[workspace.package]
+edition = "2021"
+license = "MIT"
+version = "0.3.0"
+publish = false
+
+[workspace.dependencies]
+thiserror = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+toml_edit = "0.22"
+uuid = { version = "1", features = ["v4"] }
+rusqlite = { version = "0.37", features = ["bundled"] }
+parking_lot = "0.12"
+tempfile = "3"
+gix = { version = "0.73", default-features = false, features = ["max-performance-safe"] }
+gix-date = "0.10"
+pyo3 = { version = "0.29" }
+architect-c4-domain = { path = "packages/architect-c4-domain" }
+architect-c4-revision = { path = "packages/architect-c4-revision" }
+architect-c4-session = { path = "packages/architect-c4-session" }
+architect-c4-model = { path = "packages/architect-c4-model" }
+architect-c4-git = { path = "packages/architect-c4-git" }
+architect-c4-adr = { path = "packages/architect-c4-adr" }
+architect-c4-flow = { path = "packages/architect-c4-flow" }
+architect-c4-policy = { path = "packages/architect-c4-policy" }
+architect-c4-validate = { path = "packages/architect-c4-validate" }
+architect-c4-scene = { path = "packages/architect-c4-scene" }
+architect-c4-render = { path = "packages/architect-c4-render" }
+architect-c4-wasm = { path = "packages/architect-c4-wasm" }
+architect-c4-queue = { path = "packages/architect-c4-queue" }
+architect-c4-tomlio = { path = "packages/architect-c4-tomlio" }

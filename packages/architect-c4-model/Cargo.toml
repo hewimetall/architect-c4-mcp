@@ -1,0 +1,20 @@
+[package]
+name = "architect-c4-model"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "C4 element/relationship use-cases + rusqlite (via RevisionPort)"
+
+[dependencies]
+architect-c4-domain = { workspace = true }
+architect-c4-revision = { workspace = true }
+rusqlite = { workspace = true }
+parking_lot = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

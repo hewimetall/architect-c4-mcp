@@ -1,0 +1,13 @@
+[package]
+name = "architect-c4-validate"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "C4 + ADR validation rules (pure over domain snapshots)"
+
+[dependencies]
+architect-c4-domain = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }

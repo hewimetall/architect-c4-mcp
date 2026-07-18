@@ -1,0 +1,24 @@
+name: architecture_decision_records
+description: |
+  Write Architecture Decision Records (ADRs) into architect-c4 (git-fixed docs/adr + SQL index).
+  Use when locking a technical decision with context/options/consequences.
+arguments:
+  - name: workspace_id
+    required: true
+    description: Target workspace UUID
+  - name: title
+    required: true
+    description: ADR title
+template: |
+  Document an ADR in architect-c4 for workspace {{workspace_id}}.
+
+  Title: {{title}}
+
+  Steps:
+  1. Read model: architectC4.getModel(workspaceId: "{{workspace_id}}") { json }
+  2. Draft markdown with Context / Decision / Consequences
+  3. Scope to a real element id (software_system or container)
+  4. Call add_adr (write path) with status accepted|proposed
+  5. Return view_url from response or listAdrs
+
+  Prefer ONE GraphQL read batch before writing.

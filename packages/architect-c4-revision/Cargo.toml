@@ -1,0 +1,19 @@
+[package]
+name = "architect-c4-revision"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Append-only SQL revision mechanics (RevisionPort + rusqlite adapter)"
+
+[dependencies]
+architect-c4-domain = { workspace = true }
+rusqlite = { workspace = true }
+parking_lot = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+serde_json = { workspace = true }

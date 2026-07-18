@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "architect-c4": {
+      "url": "https://c4.example.com/mcp-proxy",
+      "headers": {
+        "Authorization": "Bearer REPLACE_WITH_TOKEN_FROM_SERVER_/var/lib/vmcp/tokens.json"
+      }
+    }
+  }
+}

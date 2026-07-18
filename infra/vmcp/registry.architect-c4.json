@@ -1,0 +1,18 @@
+{
+  "upstreams": [
+    {
+      "name": "architect-c4",
+      "description": "C4 model MCP: SQLite layers+revisions, ADR git fixation, validate, overview with links",
+      "transport": "stdio",
+      "command": "uv",
+      "args": ["run", "--directory", "/ABS/PATH/TO/ai-research-structure-with-lsp", "architect-c4"],
+      "cwd": "/ABS/PATH/TO/ai-research-structure-with-lsp",
+      "env": {
+        "FASTMCP_SHOW_CLI_BANNER": "false",
+        "ARCHITECT_C4_DATA": "/ABS/PATH/TO/ai-research-structure-with-lsp/.data"
+      },
+      "sidecar_spec": "architect-c4.json",
+      "enabled": true
+    }
+  ]
+}

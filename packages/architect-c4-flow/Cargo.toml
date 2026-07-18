@@ -1,0 +1,20 @@
+[package]
+name = "architect-c4-flow"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Flow use-cases: rigid JSON in worktree + git commit + SQL index"
+
+[dependencies]
+architect-c4-domain = { workspace = true }
+architect-c4-revision = { workspace = true }
+rusqlite = { workspace = true }
+parking_lot = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+architect-c4-tomlio = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+architect-c4-git = { workspace = true }

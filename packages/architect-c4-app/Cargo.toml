@@ -1,0 +1,39 @@
+[package]
+name = "architect-c4-app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Composition root + thin PyO3 façade for slim Python FastMCP"
+
+[lib]
+name = "_native"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+pyo3 = { workspace = true }
+architect-c4-domain = { workspace = true }
+architect-c4-revision = { workspace = true }
+architect-c4-session = { workspace = true }
+architect-c4-model = { workspace = true }
+architect-c4-git = { workspace = true }
+architect-c4-adr = { workspace = true }
+architect-c4-flow = { workspace = true }
+architect-c4-policy = { workspace = true }
+architect-c4-validate = { workspace = true }
+architect-c4-render = { workspace = true }
+architect-c4-scene = { workspace = true }
+architect-c4-queue = { workspace = true }
+architect-c4-tomlio = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+uuid = { workspace = true }
+parking_lot = { workspace = true }
+
+[features]
+extension-module = ["pyo3/extension-module"]
+default = ["extension-module"]
+
+[dev-dependencies]
+pyo3 = { workspace = true, features = ["auto-initialize"] }
+tempfile = { workspace = true }
