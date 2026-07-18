@@ -22,10 +22,10 @@ architect-c4 (sidecar)  ← FastMCP + очередь записи Rust
 ## Локально без сборки
 
 ```bash
-export ARCHITECT_C4_DOCS=/abs/path/to/product-repo/docs
-export ARCHITECT_C4_WORKSPACE_ID=default
-export ARCHITECT_C4_PUBLIC_BASE=https://c4.example.com
-uvx architect-c4
+uvx architect-c4 \
+  --docs /abs/path/to/product-repo/docs \
+  --workspace-id default \
+  --public-base https://c4.example.com
 ```
 
 Cursor:
@@ -35,12 +35,12 @@ Cursor:
   "mcpServers": {
     "architect-c4": {
       "command": "uvx",
-      "args": ["architect-c4"],
-      "env": {
-        "ARCHITECT_C4_DOCS": "/ABS/product/docs",
-        "ARCHITECT_C4_WORKSPACE_ID": "default",
-        "ARCHITECT_C4_PUBLIC_BASE": "https://c4.example.com"
-      }
+      "args": [
+        "architect-c4",
+        "--docs", "/ABS/product/docs",
+        "--workspace-id", "default",
+        "--public-base", "https://c4.example.com"
+      ]
     }
   }
 }

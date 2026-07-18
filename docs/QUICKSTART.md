@@ -5,33 +5,33 @@
 Нужен Python 3.12+ и [uv](https://github.com/astral-sh/uv) (или pip). **Rust не нужен.**
 
 ```bash
-# одноразовый запуск
-export ARCHITECT_C4_DOCS=/abs/path/to/product/docs
-export ARCHITECT_C4_WORKSPACE_ID=default
-export ARCHITECT_C4_PUBLIC_BASE=https://c4.example.com
-uvx architect-c4
+uvx architect-c4 \
+  --docs /abs/path/to/product/docs \
+  --workspace-id default \
+  --public-base https://c4.example.com
 ```
+
+Эквивалент через env: `ARCHITECT_C4_DOCS` (CLI `--docs` имеет приоритет).
 
 Или поставить CLI в PATH:
 
 ```bash
 uv tool install architect-c4
 # либо: pip install architect-c4
-
-export ARCHITECT_C4_DOCS=/abs/path/to/product/docs
-architect-c4
+architect-c4 --docs /abs/path/to/product/docs
 ```
 
 HTTP:
 
 ```bash
-export ARCHITECT_C4_TRANSPORT=http
-export ARCHITECT_C4_HOST=127.0.0.1
-export ARCHITECT_C4_PORT=8766
-uvx architect-c4
+uvx architect-c4 \
+  --docs /abs/path/to/product/docs \
+  --transport http --host 127.0.0.1 --port 8766
 # MCP:  http://127.0.0.1:8766/mcp
 # View: http://127.0.0.1:8766/view/default?layer=context
 ```
+
+Флаги: `--docs`/`-d`, `--workspace-id`/`-w`, `--transport`, `--host`, `--port`, `--public-base`.
 
 На диск продукта пишутся только:
 
@@ -48,12 +48,12 @@ docs/flows/*.toml
   "mcpServers": {
     "architect-c4": {
       "command": "uvx",
-      "args": ["architect-c4"],
-      "env": {
-        "ARCHITECT_C4_DOCS": "/ABS/product/docs",
-        "ARCHITECT_C4_WORKSPACE_ID": "default",
-        "ARCHITECT_C4_PUBLIC_BASE": "https://c4.example.com"
-      }
+      "args": [
+        "architect-c4",
+        "--docs", "/ABS/product/docs",
+        "--workspace-id", "default",
+        "--public-base", "https://c4.example.com"
+      ]
     }
   }
 }

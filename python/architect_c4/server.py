@@ -1,13 +1,16 @@
 """Slim FastMCP server: tools delegate to Rust composition root.
 
-Sidecar: mount product ``docs/`` via ``ARCHITECT_C4_DOCS``. Persist = TOML only.
-Writes go through an in-process Rust queue. SQLite indexes stay in-memory.
+Sidecar: mount product ``docs/`` via ``--docs`` / ``ARCHITECT_C4_DOCS``.
+Persist = TOML only. Writes go through an in-process Rust queue.
+SQLite indexes stay in-memory.
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
+import sys
 from typing import Any
 
 from fastmcp import FastMCP
@@ -23,6 +26,66 @@ register_prompts(mcp)
 DEFAULT_PUBLIC_BASE = os.environ.get(
     "ARCHITECT_C4_PUBLIC_BASE", "https://c4.example.com"
 )
+
+
+def _apply_cli_env(argv: list[str] | None = None) -> argparse.Namespace:
+    """Parse sidecar CLI flags into env (before ``native.init`` / auto-bind).
+
+    ``--docs`` wins over ``ARCHITECT_C4_DOCS``. Remaining argv is left in
+    ``sys.argv`` for FastMCP if it ever consumes it.
+    """
+    parser = argparse.ArgumentParser(
+        prog="architect-c4",
+        description="MCP sidecar: C4/ADR/Flow → product docs/*.toml",
+    )
+    parser.add_argument(
+        "--docs",
+        "-d",
+        metavar="DIR",
+        help="Absolute path to product docs/ (sets ARCHITECT_C4_DOCS)",
+    )
+    parser.add_argument(
+        "--workspace-id",
+        "-w",
+        metavar="ID",
+        help="Workspace id for auto-bind (default: env or 'default')",
+    )
+    parser.add_argument(
+        "--transport",
+        choices=("stdio", "http", "streamable-http", "sse"),
+        help="MCP transport (default: ARCHITECT_C4_TRANSPORT or stdio)",
+    )
+    parser.add_argument(
+        "--host",
+        help="HTTP bind host (default: ARCHITECT_C4_HOST or 127.0.0.1)",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        help="HTTP port (default: ARCHITECT_C4_PORT or 8765)",
+    )
+    parser.add_argument(
+        "--public-base",
+        metavar="URL",
+        help="HTTPS base for viewer links (ARCHITECT_C4_PUBLIC_BASE)",
+    )
+    args, rest = parser.parse_known_args(argv)
+    if argv is None:
+        sys.argv = [sys.argv[0], *rest]
+
+    if args.docs:
+        os.environ["ARCHITECT_C4_DOCS"] = os.path.abspath(args.docs)
+    if args.workspace_id:
+        os.environ["ARCHITECT_C4_WORKSPACE_ID"] = args.workspace_id
+    if args.transport:
+        os.environ["ARCHITECT_C4_TRANSPORT"] = args.transport
+    if args.host:
+        os.environ["ARCHITECT_C4_HOST"] = args.host
+    if args.port is not None:
+        os.environ["ARCHITECT_C4_PORT"] = str(args.port)
+    if args.public_base:
+        os.environ["ARCHITECT_C4_PUBLIC_BASE"] = args.public_base
+    return args
 
 
 def _ensure_init() -> None:
@@ -476,7 +539,8 @@ async def health(_request: Request) -> Response:
     return Response("ok", media_type="text/plain")
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
+    _apply_cli_env(argv)
     _ensure_init()
     transport = os.environ.get("ARCHITECT_C4_TRANSPORT", "stdio").strip().lower()
     if transport in {"http", "streamable-http", "sse"}:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -118,12 +119,60 @@ def test_main_invokes_mcp_run(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
         delattr(server._ensure_init, "_done")
     called = {"n": 0}
 
-    def fake_run():
+    def fake_run(**_kwargs):
         called["n"] += 1
 
     monkeypatch.setattr(server.mcp, "run", fake_run)
-    server.main()
+    server.main([])
     assert called["n"] == 1
+
+
+def test_cli_docs_arg_sets_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    docs = tmp_path / "product" / "docs"
+    docs.mkdir(parents=True)
+    monkeypatch.delenv("ARCHITECT_C4_DOCS", raising=False)
+    monkeypatch.delenv("ARCHITECT_C4_WORKSPACE_ID", raising=False)
+    monkeypatch.delenv("ARCHITECT_C4_TRANSPORT", raising=False)
+    args = server._apply_cli_env(
+        [
+            "--docs",
+            str(docs),
+            "--workspace-id",
+            "ws1",
+            "--transport",
+            "http",
+            "--host",
+            "0.0.0.0",
+            "--port",
+            "8766",
+            "--public-base",
+            "https://c4.example.com",
+        ]
+    )
+    assert args.docs == str(docs)
+    assert os.environ["ARCHITECT_C4_DOCS"] == str(docs.resolve())
+    assert os.environ["ARCHITECT_C4_WORKSPACE_ID"] == "ws1"
+    assert os.environ["ARCHITECT_C4_TRANSPORT"] == "http"
+    assert os.environ["ARCHITECT_C4_HOST"] == "0.0.0.0"
+    assert os.environ["ARCHITECT_C4_PORT"] == "8766"
+    assert os.environ["ARCHITECT_C4_PUBLIC_BASE"] == "https://c4.example.com"
+
+
+def test_main_docs_arg_before_init(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    monkeypatch.setenv("ARCHITECT_C4_DATA", str(tmp_path / "data"))
+    monkeypatch.delenv("ARCHITECT_C4_DOCS", raising=False)
+    if hasattr(server._ensure_init, "_done"):
+        delattr(server._ensure_init, "_done")
+    seen: dict = {}
+
+    def fake_run(**_kwargs):
+        seen["docs"] = os.environ.get("ARCHITECT_C4_DOCS")
+
+    monkeypatch.setattr(server.mcp, "run", fake_run)
+    server.main(["--docs", str(docs), "-w", "default"])
+    assert seen["docs"] == str(docs.resolve())
 
 
 def test_reject_dangling_relationship_and_delete(data_dir: Path):

@@ -132,10 +132,11 @@ context/decision/consequences = GFM (таблицы, код, списки). Бе
 ## Запуск
 
 ```bash
-export ARCHITECT_C4_DOCS=/путь/к/репо/docs
-export ARCHITECT_C4_PUBLIC_BASE=https://c4.example.com   # опционально
-export ARCHITECT_C4_TRANSPORT=http                       # или stdio
-uv run architect-c4
+uv run architect-c4 \
+  --docs /путь/к/репо/docs \
+  --public-base https://c4.example.com \
+  --transport http
+# или: ARCHITECT_C4_DOCS=... (CLI --docs важнее)
 ```
 
 Docker:
