@@ -159,7 +159,7 @@ services:
 ## CI
 
 - push/PR: тесты Python + Rust, coverage ≥ 93%, lint, сборка Docker  
-- tag `v*`: GitHub Release + образ в GHCR  
+- tag `v*`: PyPI (`architect-c4` wheels) + GitHub Release + образ в GHCR  
 
 Обязательные тесты: toml round-trip ADR/flow, rewrite json→toml, очередь сериализует запись, bind без `.db`, список промптов.
 

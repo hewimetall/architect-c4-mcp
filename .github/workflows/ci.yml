@@ -33,7 +33,7 @@ jobs:
           ln -sf /usr/lib/x86_64-linux-gnu/libpython3.12.so.1.0 .libs/libpython3.12.so
           export LIBRARY_PATH="$PWD/.libs:${LIBRARY_PATH:-}"
           export LD_LIBRARY_PATH="$PWD/.libs:${LD_LIBRARY_PATH:-}"
-          uv run maturin develop --manifest-path packages/architect-c4-app/Cargo.toml
+          uv run maturin develop
 
       - name: Pytest
         run: uv run pytest -q

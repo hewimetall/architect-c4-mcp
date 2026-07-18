@@ -2,7 +2,7 @@
 
 MCP-sidecar: агент пишет **C4 + ADR + Flow** в `docs/` вашего git-репозитория.
 
-**Концепт:** [docs/CONCEPT.md](docs/CONCEPT.md) · **Старт:** [docs/QUICKSTART.md](docs/QUICKSTART.md)
+**Концепт:** [docs/CONCEPT.md](docs/CONCEPT.md) · **Старт:** [docs/QUICKSTART.md](docs/QUICKSTART.md) · **PyPI:** [docs/PUBLISH.md](docs/PUBLISH.md)
 
 ```text
 ваш-репо/docs/
@@ -19,29 +19,46 @@ architect-c4 (sidecar)  ← FastMCP + очередь записи Rust
 
 Эталон: [architect-c4-self](https://architecture.runmcp.ru/view/architect-c4-self?mode=all&renderer=wasm)
 
-## Быстрый старт
+## Локально без сборки
 
 ```bash
-uv sync --extra dev
-uv run maturin develop --manifest-path packages/architect-c4-app/Cargo.toml
-
 export ARCHITECT_C4_DOCS=/abs/path/to/product-repo/docs
 export ARCHITECT_C4_WORKSPACE_ID=default
 export ARCHITECT_C4_PUBLIC_BASE=https://c4.example.com
+uvx architect-c4
+```
+
+Cursor:
+
+```json
+{
+  "mcpServers": {
+    "architect-c4": {
+      "command": "uvx",
+      "args": ["architect-c4"],
+      "env": {
+        "ARCHITECT_C4_DOCS": "/ABS/product/docs",
+        "ARCHITECT_C4_WORKSPACE_ID": "default",
+        "ARCHITECT_C4_PUBLIC_BASE": "https://c4.example.com"
+      }
+    }
+  }
+}
+```
+
+Альтернатива: `docker pull ghcr.io/hewimetall/architect-c4-mcp:latest`.
+
+## Разработка
+
+```bash
+uv sync --extra dev
+uv run maturin develop
 uv run architect-c4
 ```
 
-```text
-bind_docs (или auto при ARCHITECT_C4_DOCS)
-→ upsert_element / upsert_relationship
-→ upsert_adr / upsert_flow
-→ validate_model → get_view_links
-→ git add docs && commit
-```
-
-## CI
+## CI / release
 
 | Событие | Workflow |
 |---------|----------|
-| push / PR | `.github/workflows/ci.yml` — pytest, cargo, coverage ≥93%, lint, docker build |
-| tag `v*` | `.github/workflows/release.yml` — Release + GHCR |
+| push / PR | `.github/workflows/ci.yml` — pytest, cargo, coverage ≥93%, lint, docker |
+| tag `v*` | `.github/workflows/release.yml` — PyPI wheels + GitHub Release + GHCR |

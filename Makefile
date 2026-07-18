@@ -12,11 +12,11 @@ RUST_CRATES := \
 
 develop:
 	uv sync --extra dev
-	uv run maturin develop --manifest-path packages/architect-c4-app/Cargo.toml
+	uv run maturin develop
 
 test:
 	cargo test --workspace --exclude architect-c4-app
-	uv run maturin develop --manifest-path packages/architect-c4-app/Cargo.toml
+	uv run maturin develop
 	uv run pytest -q
 
 cov-rust:

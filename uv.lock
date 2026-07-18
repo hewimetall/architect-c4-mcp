@@ -8,12 +8,6 @@ resolution-markers = [
     "python_full_version < '3.14' and sys_platform != 'win32'",
 ]
 
-[manifest]
-members = [
-    "architect-c4",
-    "architect-c4-app",
-]
-
 [[package]]
 name = "aiofile"
 version = "3.11.1"
@@ -62,7 +56,6 @@ name = "architect-c4"
 version = "0.3.0"
 source = { editable = "." }
 dependencies = [
-    { name = "architect-c4-app" },
     { name = "fastmcp", extra = ["tasks"] },
     { name = "pydantic" },
 ]
@@ -77,7 +70,6 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "architect-c4-app", editable = "packages/architect-c4-app" },
     { name = "fastmcp", extras = ["tasks"], specifier = ">=2.0" },
     { name = "maturin", marker = "extra == 'dev'", specifier = ">=1.8,<2" },
     { name = "pydantic", specifier = ">=2.12" },
@@ -86,11 +78,6 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.12" },
 ]
 provides-extras = ["dev"]
-
-[[package]]
-name = "architect-c4-app"
-version = "0.1.0"
-source = { editable = "packages/architect-c4-app" }
 
 [[package]]
 name = "attrs"
