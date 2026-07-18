@@ -1,0 +1,11 @@
+[package]
+name = "architect-c4-queue"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "In-process serial write queue for docs.toml mutations"
+
+[dependencies]
+architect-c4-domain = { workspace = true }
+parking_lot = { workspace = true }

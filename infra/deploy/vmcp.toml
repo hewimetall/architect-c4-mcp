@@ -1,0 +1,29 @@
+# Production vmcp for c4.example.com (host network / local bind)
+
+host = "127.0.0.1"
+port = 8765
+public_base_url = "https://c4.example.com"
+registry_path = "/opt/architect-c4/infra/deploy/registry.json"
+spec_dir = "/opt/architect-c4/infra/deploy/specs"
+skills_dir = "/opt/architect-c4/infra/deploy/skills"
+
+[auth]
+enabled = true
+# Static pre-reg tokens only (no interactive OAuth required for Cursor automation)
+tokens_file = "/var/lib/vmcp/tokens.json"
+issuer = "https://c4.example.com"
+# Keep a master password hash so /consent still works if a client insists on OAuth.
+# Override via VMCP_AUTH__MASTER_PASSWORD_ARGON2 in the environment.
+# Generate on the server: `vmcp hash-password --password '...'`
+# Copy this file to /var/lib/vmcp/vmcp.toml after patching the hash (do not overwrite on deploy).
+master_password_argon2 = "$argon2id$v=19$m=19456,t=2,p=1$REPLACE_ME$REPLACE_ME"
+
+[tasks]
+enabled = true
+db_path = "/var/lib/vmcp/tasks.db"
+task_ttl_ms = 600000
+poll_interval_ms = 1000
+max_concurrent = 8
+
+[proxy]
+enabled = true

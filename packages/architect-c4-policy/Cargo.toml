@@ -1,0 +1,13 @@
+[package]
+name = "architect-c4-policy"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "C4 relationship/parent baseline + ADR policy.forbid enforcement"
+
+[dependencies]
+architect-c4-domain = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }

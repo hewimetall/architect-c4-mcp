@@ -1,0 +1,15 @@
+services:
+  architect-c4:
+    build: .
+    image: architect-c4-mcp:local
+    ports:
+      - "8766:8766"
+    volumes:
+      - ${PRODUCT_DOCS:-./examples/docs}:/docs
+    environment:
+      ARCHITECT_C4_DOCS: /docs
+      ARCHITECT_C4_WORKSPACE_ID: default
+      ARCHITECT_C4_TRANSPORT: http
+      ARCHITECT_C4_HOST: 0.0.0.0
+      ARCHITECT_C4_PORT: "8766"
+      ARCHITECT_C4_PUBLIC_BASE: ${ARCHITECT_C4_PUBLIC_BASE:-https://c4.example.com}

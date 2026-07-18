@@ -1,0 +1,17 @@
+{
+  "name": "architect-c4-wasm",
+  "type": "module",
+  "description": "WASM C4 canvas drawer (WebGPU if navigator.gpu else Canvas2D)",
+  "version": "0.3.0",
+  "license": "MIT",
+  "files": [
+    "architect_c4_wasm_bg.wasm",
+    "architect_c4_wasm.js",
+    "architect_c4_wasm.d.ts"
+  ],
+  "main": "architect_c4_wasm.js",
+  "types": "architect_c4_wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

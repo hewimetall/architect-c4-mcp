@@ -1,0 +1,19 @@
+[Unit]
+Description=vmcp gateway for architect-c4
+After=network.target architect-c4.service
+Requires=architect-c4.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/vmcp-run
+Environment=VMCP_AUTH__TOKENS_FILE=/var/lib/vmcp/tokens.json
+Environment=VMCP_TASKS__ENABLED=true
+Environment=RUST_LOG=info
+# Prefer /var/lib/vmcp/vmcp.toml so deploys do not clobber the live argon2 hash.
+ExecStart=/usr/local/bin/vmcp --config /var/lib/vmcp/vmcp.toml
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

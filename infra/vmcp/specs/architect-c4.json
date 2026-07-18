@@ -1,0 +1,85 @@
+{
+  "server": "architect-c4",
+  "tools": [
+    {
+      "name": "create_session",
+      "read_only": false,
+      "task_support": "forbidden"
+    },
+    {
+      "name": "get_session",
+      "read_only": true,
+      "task_support": "forbidden"
+    },
+    {
+      "name": "list_sessions",
+      "read_only": true,
+      "task_support": "forbidden"
+    },
+    {
+      "name": "create_project",
+      "read_only": false,
+      "task_support": "forbidden"
+    },
+    {
+      "name": "checkout_workspace",
+      "read_only": false,
+      "task_support": "forbidden"
+    },
+    {
+      "name": "upsert_element",
+      "read_only": false,
+      "task_support": "forbidden"
+    },
+    {
+      "name": "upsert_relationship",
+      "read_only": false,
+      "task_support": "forbidden"
+    },
+    {
+      "name": "delete_relationship",
+      "read_only": false,
+      "task_support": "forbidden"
+    },
+    {
+      "name": "get_model",
+      "read_only": true,
+      "task_support": "forbidden"
+    },
+    {
+      "name": "validate_model",
+      "read_only": true,
+      "task_support": "forbidden"
+    },
+    {
+      "name": "add_adr",
+      "read_only": false,
+      "task_support": "forbidden"
+    },
+    {
+      "name": "list_adrs",
+      "read_only": true,
+      "task_support": "forbidden"
+    },
+    {
+      "name": "get_overview_diagram",
+      "read_only": true,
+      "task_support": "forbidden"
+    },
+    {
+      "name": "get_layer_diagram",
+      "read_only": true,
+      "task_support": "forbidden"
+    },
+    {
+      "name": "get_view_links",
+      "read_only": true,
+      "task_support": "forbidden"
+    },
+    {
+      "name": "get_scene",
+      "read_only": true,
+      "task_support": "forbidden"
+    }
+  ]
+}

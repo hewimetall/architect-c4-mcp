@@ -1,0 +1,24 @@
+[Unit]
+Description=architect-c4 MCP (streamable HTTP)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/architect-c4
+EnvironmentFile=-/etc/architect-c4/env
+# Fallbacks if EnvironmentFile missing (replace PUBLIC_BASE on the host):
+Environment=ARCHITECT_C4_DATA=/var/lib/architect-c4
+Environment=ARCHITECT_C4_TRANSPORT=http
+Environment=ARCHITECT_C4_HOST=127.0.0.1
+Environment=ARCHITECT_C4_PORT=8766
+Environment=ARCHITECT_C4_PATH=/mcp
+Environment=ARCHITECT_C4_PUBLIC_BASE=https://c4.example.com
+Environment=ARCHITECT_C4_ATOM_EDGES=1
+Environment=FASTMCP_SHOW_CLI_BANNER=false
+ExecStart=/opt/architect-c4/.venv/bin/architect-c4
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://architecture.runmcp.ru/schemas/code_member.json",
+  "title": "CodeMember",
+  "description": "Structured UML class member for architect-c4 kind=code elements.",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "visibility", "name"],
+      "properties": {
+        "kind": { "const": "method" },
+        "visibility": { "enum": ["+", "-", "#", "~"] },
+        "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "params": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+              "type": { "type": "string", "minLength": 1, "maxLength": 120 },
+              "optional": { "type": "boolean", "default": false }
+            }
+          }
+        },
+        "return_type": { "type": "string", "minLength": 1, "maxLength": 120 }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "visibility", "name"],
+      "properties": {
+        "kind": { "const": "field" },
+        "visibility": { "enum": ["+", "-", "#", "~"] },
+        "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "type": { "type": "string", "minLength": 1, "maxLength": 120 }
+      }
+    }
+  ]
+}

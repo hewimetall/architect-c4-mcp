@@ -1,0 +1,33 @@
+[package]
+name = "architect-c4-wasm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "WASM C4 canvas drawer (WebGPU if navigator.gpu else Canvas2D)"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+architect-c4-scene = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+wasm-bindgen = "0.2"
+js-sys = "0.3"
+serde-wasm-bindgen = "0.6"
+
+[dependencies.web-sys]
+version = "0.3"
+features = [
+  "console",
+  "Document",
+  "Element",
+  "HtmlCanvasElement",
+  "CanvasRenderingContext2d",
+  "CssStyleDeclaration",
+  "Window",
+  "Navigator",
+]
+
+[dev-dependencies]

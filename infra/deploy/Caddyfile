@@ -1,0 +1,48 @@
+# c4.example.com — Caddy TLS
+# /mcp*  → vmcp gateway
+# /view* → architect-c4 HTTP (C4 Mermaid viewer + drill-down)
+c4.example.com {
+	encode gzip
+
+	handle /health {
+		reverse_proxy 127.0.0.1:8765
+	}
+
+	# Interactive C4 diagrams + project index (/view/) + WASM assets
+	handle /view {
+		reverse_proxy 127.0.0.1:8766 {
+			flush_interval -1
+		}
+	}
+	handle /view/* {
+		reverse_proxy 127.0.0.1:8766 {
+			flush_interval -1
+		}
+	}
+
+	handle /wasm/* {
+		reverse_proxy 127.0.0.1:8766 {
+			flush_interval -1
+		}
+	}
+
+	handle /mcp* {
+		reverse_proxy 127.0.0.1:8765 {
+			flush_interval -1
+		}
+	}
+
+	handle /mcp-proxy* {
+		reverse_proxy 127.0.0.1:8765 {
+			flush_interval -1
+		}
+	}
+
+	handle /.well-known/* {
+		reverse_proxy 127.0.0.1:8765
+	}
+
+	handle {
+		respond "not found" 404
+	}
+}

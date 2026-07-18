@@ -1,0 +1,23 @@
+/target/
+/.venv/
+/.data/
+**/__pycache__/
+*.so
+.coverage
+coverage-py.json
+coverage*.json
+htmlcov/
+.pytest_cache/
+.ruff_cache/
+
+# secrets / local env
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+id_rsa
+id_ed25519
+tokens.json
+**/tokens.json
+.libs/
