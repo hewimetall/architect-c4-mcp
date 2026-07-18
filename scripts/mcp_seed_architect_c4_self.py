@@ -305,8 +305,8 @@ def main() -> int:
             ],
             "refs": [
                 {
-                    "url": "https://github.com/hewimetall/ai-research-structure-with-lsp",
-                    "title": "architect-c4 repo",
+                    "url": "https://github.com/hewimetall/architect-c4-mcp",
+                    "title": "architect-c4-mcp repo",
                 }
             ],
         },
@@ -384,8 +384,8 @@ def main() -> int:
             "related_flows": ["mcp-upsert-element", "adr-git-fixation"],
             "refs": [
                 {
-                    "url": "https://github.com/hewimetall/ai-research-structure-with-lsp/blob/main/docs/adr/0001-hex-solid-revision.md",
-                    "title": "ADR 0001 markdown",
+                    "url": "https://github.com/hewimetall/architect-c4-mcp/blob/main/docs/adr/0001-hex-solid-revision.md",
+                    "title": "ADR 0001",
                 }
             ],
         },

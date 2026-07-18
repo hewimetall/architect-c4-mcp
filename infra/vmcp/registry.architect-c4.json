@@ -2,14 +2,15 @@
   "upstreams": [
     {
       "name": "architect-c4",
-      "description": "C4 model MCP: SQLite layers+revisions, ADR git fixation, validate, overview with links",
+      "description": "C4/ADR/Flow MCP sidecar: TOML under docs/, Rust write queue, Mermaid viewer",
       "transport": "stdio",
       "command": "uv",
-      "args": ["run", "--directory", "/ABS/PATH/TO/ai-research-structure-with-lsp", "architect-c4"],
-      "cwd": "/ABS/PATH/TO/ai-research-structure-with-lsp",
+      "args": ["run", "--directory", "/ABS/PATH/TO/architect-c4-mcp", "architect-c4"],
+      "cwd": "/ABS/PATH/TO/architect-c4-mcp",
       "env": {
         "FASTMCP_SHOW_CLI_BANNER": "false",
-        "ARCHITECT_C4_DATA": "/ABS/PATH/TO/ai-research-structure-with-lsp/.data"
+        "ARCHITECT_C4_DOCS": "/ABS/PATH/TO/product/docs",
+        "ARCHITECT_C4_WORKSPACE_ID": "default"
       },
       "sidecar_spec": "architect-c4.json",
       "enabled": true
