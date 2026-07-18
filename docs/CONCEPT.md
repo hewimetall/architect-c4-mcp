@@ -5,8 +5,6 @@
 Эталон модели:  
 https://architecture.runmcp.ru/view/architect-c4-self?mode=all&renderer=wasm
 
-Исходник для trim: клон `ai-research-structure-with-lsp`.
-
 ---
 
 ## Зачем
@@ -120,14 +118,14 @@ context/decision/consequences = GFM (таблицы, код, списки). Бе
 
 ---
 
-## Что взять из клона
+## Границы продукта
 
-| Оставить / переделать | Убрать / сжать |
-|----------------------|----------------|
-| domain, app, validate, policy, render | SQL-ревизии как persist |
+| Есть | Нет |
+|------|-----|
+| domain, app, validate, policy, render | SQLite / JSON как SoT в `docs/` |
 | model / adr / flow → toml + очередь | bare git + worktree как обязательный путь |
-| git — только commit в уже существующий репо | `docs/research/**`, `.cursor/**` |
-| NEW: очередь + toml writer | JSON persist, WASM в default |
+| git — commit на хосте в репо продукта | research-заметки в поставке |
+| Mermaid viewer по умолчанию | WASM в базовом образе |
 
 ---
 
