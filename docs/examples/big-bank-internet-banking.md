@@ -11,11 +11,11 @@
 
 ## Viewer
 
-- Context: <https://c4.example.com/view?layer=context>
-- Containers (IBS): <https://c4.example.com/view?layer=container&parent=ibs>
-- Components (API): <https://c4.example.com/view?layer=component&parent=api>
-- Code (Security): <https://c4.example.com/view?layer=code&parent=security>
-- ADRs: <https://c4.example.com/view/adrs>
+- Context: <https://c4.example.com/?layer=context>
+- Containers (IBS): <https://c4.example.com/?layer=container&parent=ibs>
+- Components (API): <https://c4.example.com/?layer=component&parent=api>
+- Code (Security): <https://c4.example.com/?layer=code&parent=security>
+- ADRs: <https://c4.example.com/adrs>
 
 ### Агент
 

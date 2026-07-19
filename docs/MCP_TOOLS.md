@@ -49,4 +49,4 @@ Happy path: `uvx architect-c4-mcp --docs /path/to/docs`, затем обычны
 | `get_scene(mode?, layer?, focus?)` | scene graph (опционально WASM) |
 | `get_view_links(base_url?)` | HTTPS URLs (`ARCHITECT_C4_PUBLIC_BASE`) |
 
-Браузер: `/view?layer=context` (Mermaid по умолчанию), `/view/adrs/{id}`, `/view/flows/{id}`.
+Браузер: `/?layer=context` (Mermaid по умолчанию), `/adrs/{id}`, `/flows/{id}`.

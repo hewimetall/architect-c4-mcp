@@ -272,7 +272,7 @@ def test_layer_diagrams_all_c4_levels(docs: Path):
     cont = server.get_layer_diagram("container", parent_id="s")
     assert "content" in cont
     links = server.get_view_links()
-    assert links["view_url"].endswith("/view")
+    assert links["view_url"].endswith("/")
     assert "workspace_id" not in links
 
 
@@ -300,7 +300,7 @@ def test_upsert_flow_c4_dynamic_and_diagram(docs: Path):
     assert (docs / "flows" / "login-happy.toml").is_file()
     diagram = server.get_flow_diagram("login-happy")
     assert "sequenceDiagram" in diagram["content"]
-    assert "/view/flows/login-happy" in diagram["view_url"]
+    assert "/flows/login-happy" in diagram["view_url"]
     listed = server.list_flows()
     assert len(listed["flows"]) == 1
     html = native.render_flows_html("https://c4.example.com")
@@ -483,11 +483,13 @@ def test_view_routes(docs: Path):
         commit=True,
     )
     client = TestClient(server.mcp.http_app())
-    assert client.get("/view/?base_url=https://c4.example.com").status_code == 200
-    assert client.get("/view/flows?base_url=https://c4.example.com").status_code == 200
-    assert client.get("/view/flows/f-view?base_url=https://c4.example.com").status_code == 200
-    assert client.get("/view/adrs?base_url=https://c4.example.com").status_code == 200
-    assert client.get("/view/adrs/0001-v?base_url=https://c4.example.com").status_code == 200
+    assert client.get("/?base_url=https://c4.example.com").status_code == 200
+    assert client.get("/flows?base_url=https://c4.example.com").status_code == 200
+    assert client.get("/flows/f-view?base_url=https://c4.example.com").status_code == 200
+    assert client.get("/adrs?base_url=https://c4.example.com").status_code == 200
+    assert client.get("/adrs/0001-v?base_url=https://c4.example.com").status_code == 200
+    # legacy /view → 308
+    assert client.get("/view/?base_url=https://c4.example.com", follow_redirects=False).status_code == 308
     assert client.get("/wasm/missing.js").status_code == 404
 
 

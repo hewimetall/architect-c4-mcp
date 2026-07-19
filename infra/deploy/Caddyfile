@@ -1,29 +1,11 @@
 # c4.example.com — Caddy TLS
-# /mcp*  → vmcp gateway
-# /view* → architect-c4 HTTP (C4 Mermaid viewer + drill-down)
+# /mcp*           → vmcp gateway
+# /, /adrs*, /flows*, /view* (legacy), /wasm* → architect-c4 HTTP viewer
 c4.example.com {
 	encode gzip
 
 	handle /health {
 		reverse_proxy 127.0.0.1:8765
-	}
-
-	# Interactive C4 diagrams + project index (/view/) + WASM assets
-	handle /view {
-		reverse_proxy 127.0.0.1:8766 {
-			flush_interval -1
-		}
-	}
-	handle /view/* {
-		reverse_proxy 127.0.0.1:8766 {
-			flush_interval -1
-		}
-	}
-
-	handle /wasm/* {
-		reverse_proxy 127.0.0.1:8766 {
-			flush_interval -1
-		}
 	}
 
 	handle /mcp* {
@@ -40,6 +22,40 @@ c4.example.com {
 
 	handle /.well-known/* {
 		reverse_proxy 127.0.0.1:8765
+	}
+
+	handle /adrs* {
+		reverse_proxy 127.0.0.1:8766 {
+			flush_interval -1
+		}
+	}
+	handle /flows* {
+		reverse_proxy 127.0.0.1:8766 {
+			flush_interval -1
+		}
+	}
+	# legacy aliases
+	handle /view {
+		reverse_proxy 127.0.0.1:8766 {
+			flush_interval -1
+		}
+	}
+	handle /view/* {
+		reverse_proxy 127.0.0.1:8766 {
+			flush_interval -1
+		}
+	}
+	handle /wasm/* {
+		reverse_proxy 127.0.0.1:8766 {
+			flush_interval -1
+		}
+	}
+
+	# C4 viewer at site root
+	handle / {
+		reverse_proxy 127.0.0.1:8766 {
+			flush_interval -1
+		}
 	}
 
 	handle {

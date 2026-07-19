@@ -52,7 +52,7 @@ uvx architect-c4-mcp \
 ```
 
 - MCP: `http://127.0.0.1:8766/mcp`
-- Viewer: `http://127.0.0.1:8766/view?layer=context`
+- Viewer: `http://127.0.0.1:8766/?layer=context`
 
 ### Cursor
 

@@ -392,7 +392,7 @@ fn upsert_adr(adr_json: &str, commit: bool) -> PyResult<String> {
                     .trim_end_matches('/'),
             )
             .unwrap_or_else(|_| "https://c4.example.com".into());
-            let view_url = format!("{base}/view/adrs/{}", d.id);
+            let view_url = format!("{base}/adrs/{}", d.id);
             Ok(json!({ "decision": d, "commit_id": cid, "view_url": view_url }).to_string())
         })
         .map_err(map_err)?;
@@ -470,7 +470,7 @@ fn get_overview_diagram(base_url: &str) -> PyResult<String> {
         relationships: &projected,
         base_url: &base,
     });
-    let view_url = format!("{base}/view?layer=context");
+    let view_url = format!("{base}/?layer=context");
     Ok(json!({
         "format": "mermaid",
         "layer": "context",
@@ -498,8 +498,8 @@ fn get_layer_diagram(layer: &str, parent_id: Option<&str>, base_url: &str) -> Py
         parent_id,
     );
     let view_url = match parent_id {
-        Some(p) => format!("{base}/view?layer={}&parent={p}", layer.as_str()),
-        None => format!("{base}/view?layer={}", layer.as_str()),
+        Some(p) => format!("{base}/?layer={}&parent={p}", layer.as_str()),
+        None => format!("{base}/?layer={}", layer.as_str()),
     };
     Ok(json!({
         "format": "mermaid",
@@ -624,7 +624,7 @@ fn list_adrs(base_url: &str) -> PyResult<String> {
     let rows: Vec<_> = adrs
         .into_iter()
         .map(|d| {
-            let view_url = format!("{base}/view/adrs/{}", d.id);
+            let view_url = format!("{base}/adrs/{}", d.id);
             json!({
                 "id": d.id,
                 "workspace_id": d.workspace_id,
@@ -666,7 +666,7 @@ fn upsert_flow(flow_json: &str, commit: bool) -> PyResult<String> {
                     .trim_end_matches('/'),
             )
             .unwrap_or_else(|_| "https://c4.example.com".into());
-            let view_url = format!("{base}/view/flows/{}", f.id);
+            let view_url = format!("{base}/flows/{}", f.id);
             Ok(json!({ "flow": f, "commit_id": cid, "view_url": view_url }).to_string())
         })
         .map_err(map_err)?;
@@ -687,7 +687,7 @@ fn list_flows(base_url: &str) -> PyResult<String> {
     let rows: Vec<_> = flows
         .into_iter()
         .map(|f| {
-            let view_url = format!("{base}/view/flows/{}", f.id);
+            let view_url = format!("{base}/flows/{}", f.id);
             json!({
                 "id": f.id,
                 "title": f.title,
@@ -727,7 +727,7 @@ fn get_flow_diagram(id: &str, base_url: &str) -> PyResult<String> {
     let f = s.flows.get_flow(WS, id).map_err(map_err)?;
     let elements = s.model.list_elements(WS).map_err(map_err)?;
     let content = flow_to_mermaid(&f, &elements);
-    let view_url = format!("{base}/view/flows/{}", f.id);
+    let view_url = format!("{base}/flows/{}", f.id);
     Ok(
         json!({ "format": "mermaid", "content": content, "view_url": view_url, "flow": f })
             .to_string(),
@@ -770,7 +770,7 @@ fn get_view_links(base_url: &str) -> PyResult<String> {
                 "id": f.id,
                 "title": f.title,
                 "kind": f.kind.as_str(),
-                "view_url": format!("{base}/view/flows/{}", f.id),
+                "view_url": format!("{base}/flows/{}", f.id),
             })
         })
         .collect();
