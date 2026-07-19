@@ -430,4 +430,51 @@ mod tests {
             ChangeKind::Delete
         );
     }
+
+    #[test]
+    fn head_and_history_reject_corrupt_row_enums() {
+        // heads filter by entity_type; revision row can still carry a bad enum value.
+        let store = SqliteRevisionStore::open_in_memory().unwrap();
+        {
+            let conn = store.conn.lock();
+            conn.execute(
+                r#"INSERT INTO revisions
+                   (id, workspace_id, entity_type, entity_id, rev_no, parent_rev_id,
+                    change_kind, snapshot_json, git_commit_id, meta_json, created_at)
+                   VALUES ('r1','w','not-a-type','e1',1,NULL,'create','{}',NULL,NULL,1)"#,
+                [],
+            )
+            .unwrap();
+            conn.execute(
+                r#"INSERT INTO revision_heads
+                   (workspace_id, entity_type, entity_id, head_rev_id, head_rev_no)
+                   VALUES ('w','element','e1','r1',1)"#,
+                [],
+            )
+            .unwrap();
+        }
+        assert!(store.head("w", EntityType::Element, "e1").is_err());
+
+        let store = SqliteRevisionStore::open_in_memory().unwrap();
+        {
+            let conn = store.conn.lock();
+            conn.execute(
+                r#"INSERT INTO revisions
+                   (id, workspace_id, entity_type, entity_id, rev_no, parent_rev_id,
+                    change_kind, snapshot_json, git_commit_id, meta_json, created_at)
+                   VALUES ('r2','w','element','e1',1,NULL,'not-a-kind','{}',NULL,NULL,1)"#,
+                [],
+            )
+            .unwrap();
+        }
+        assert!(store.history("w", EntityType::Element, "e1").is_err());
+    }
+
+    #[test]
+    fn optional_mapped_propagates_sql_errors() {
+        let err = Err::<i32, _>(rusqlite::Error::InvalidParameterName("x".into()));
+        assert!(err.optional_mapped().is_err());
+        let msg = map_sql(rusqlite::Error::InvalidParameterName("y".into()));
+        assert!(matches!(msg, DomainError::Message(_)));
+    }
 }
