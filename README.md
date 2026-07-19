@@ -16,7 +16,7 @@ MCP-сервис рядом с вашим git-репозиторием: аген
 
 ## Установка
 
-Нужен Python 3.12+. Rust не требуется.
+Нужен Python 3.11+. Rust не требуется.
 
 ```bash
 uvx architect-c4-mcp --docs /abs/path/to/product/docs

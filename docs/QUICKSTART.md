@@ -2,7 +2,7 @@
 
 ## Локально без сборки (PyPI)
 
-Нужен Python 3.12+ и [uv](https://github.com/astral-sh/uv) (или pip). **Rust не нужен.**
+Нужен Python 3.11+ и [uv](https://github.com/astral-sh/uv) (или pip). **Rust не нужен.**
 
 ```bash
 uvx architect-c4-mcp \
@@ -79,7 +79,7 @@ docker run --rm -p 8766:8766 \
 
 ## Разработка из исходников
 
-Нужны Python 3.12+, Rust stable, uv.
+Нужны Python 3.11+, Rust stable, uv.
 
 ```bash
 git clone https://github.com/hewimetall/architect-c4-mcp.git
