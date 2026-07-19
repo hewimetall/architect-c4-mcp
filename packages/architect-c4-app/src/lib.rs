@@ -30,7 +30,7 @@ use architect_c4_scene::ViewMode;
 use architect_c4_session::SqliteSessionStore;
 use architect_c4_tomlio::{
     ensure_docs_layout, read_adr_toml, read_flow_toml, read_model_toml, repo_root_from_docs,
-    rewrite_legacy_adrs, rewrite_legacy_flows, write_model_toml, ModelFile,
+    rewrite_legacy_adrs, rewrite_legacy_flows, validate_docs_dir, write_model_toml, ModelFile,
 };
 use architect_c4_validate::{validate_model, ModelSnapshot};
 use parking_lot::Mutex;
@@ -117,23 +117,38 @@ fn bind_docs_inner(
     s: &AppState,
     docs_dir: &std::path::Path,
 ) -> Result<serde_json::Value, architect_c4_domain::DomainError> {
-    let docs_dir = docs_dir
-        .canonicalize()
-        .unwrap_or_else(|_| docs_dir.to_path_buf());
-    ensure_docs_layout(&docs_dir).map_err(architect_c4_domain::DomainError::Message)?;
+    validate_docs_dir(docs_dir).map_err(architect_c4_domain::DomainError::Message)?;
+    // Create layout before canonicalize so a fresh path becomes absolute.
+    ensure_docs_layout(docs_dir).map_err(architect_c4_domain::DomainError::Message)?;
+    let docs_dir = docs_dir.canonicalize().map_err(|e| {
+        architect_c4_domain::DomainError::Message(format!(
+            "docs_dir canonicalize failed for {}: {e}",
+            docs_dir.display()
+        ))
+    })?;
     let n_adr =
         rewrite_legacy_adrs(&docs_dir).map_err(architect_c4_domain::DomainError::Message)?;
     let n_flow =
         rewrite_legacy_flows(&docs_dir).map_err(architect_c4_domain::DomainError::Message)?;
     let repo_root = repo_root_from_docs(&docs_dir);
+    let repo_root = repo_root.canonicalize().unwrap_or(repo_root);
+    let repo_path = repo_root.to_string_lossy().to_string();
+    if repo_path.is_empty() {
+        return Err(architect_c4_domain::DomainError::Message(format!(
+            "cannot derive repo root from docs_dir {}",
+            docs_dir.display()
+        )));
+    }
     // Workspace row (path = repo root for gix commits of docs/…)
     if s.sessions.get_workspace(WS).is_err() {
-        let _ = s.sessions.create_workspace(
-            WS,
-            "docs-sidecar",
-            "main",
-            &repo_root.to_string_lossy(),
-        )?;
+        s.sessions
+            .create_workspace(WS, "docs-sidecar", "main", &repo_path)
+            .map_err(|e| {
+                architect_c4_domain::DomainError::Message(format!(
+                    "bind_docs workspace init failed (docs={}, repo={repo_path}): {e}",
+                    docs_dir.display()
+                ))
+            })?;
     }
     s.adr.bind_worktree(WS, repo_root.clone());
     s.flows.bind_worktree(WS, repo_root);
@@ -277,7 +292,7 @@ fn upsert_element(
         .queue
         .submit(move || {
             let saved = s2.model.upsert_element(el)?;
-            let _ = persist_model_toml(&s2);
+            persist_model_toml(&s2)?;
             Ok(serde_json::to_string(&saved).unwrap())
         })
         .map_err(map_err)?;
@@ -323,7 +338,7 @@ fn upsert_relationship(
         .queue
         .submit(move || {
             let saved = s2.model.upsert_relationship(rel)?;
-            let _ = persist_model_toml(&s2);
+            persist_model_toml(&s2)?;
             Ok(serde_json::to_string(&saved).unwrap())
         })
         .map_err(map_err)?;
@@ -339,7 +354,7 @@ fn delete_relationship(id: &str) -> PyResult<String> {
         .queue
         .submit(move || {
             s2.model.delete_relationship(WS, &rid)?;
-            let _ = persist_model_toml(&s2);
+            persist_model_toml(&s2)?;
             Ok(json!({ "deleted": rid }).to_string())
         })
         .map_err(map_err)?;

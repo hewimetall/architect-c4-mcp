@@ -63,13 +63,17 @@ uvx architect-c4-mcp \
       "command": "uvx",
       "args": [
         "architect-c4-mcp",
-        "--docs", "/ABS/product/docs",
-        "--public-base", "https://c4.example.com"
+        "--docs",
+        "/ABS/product/docs",
+        "--public-base",
+        "https://c4.example.com"
       ]
     }
   }
 }
 ```
+
+`--docs` и путь — два аргумента. В WSL: Unix-путь, не `C:\…`.
 
 ## Что умеет агент
 

@@ -61,7 +61,21 @@ def _apply_cli_env(argv: list[str] | None = None) -> argparse.Namespace:
         metavar="URL",
         help="HTTPS base for viewer links (ARCHITECT_C4_PUBLIC_BASE)",
     )
-    args, rest = parser.parse_known_args(argv)
+    raw = list(sys.argv[1:] if argv is None else argv)
+    # Tolerate Cursor mcp.json mistake: one token "--docs /path" instead of two.
+    fixed: list[str] = []
+    for a in raw:
+        if a.startswith("--docs=") or a.startswith("-d="):
+            fixed.append("--docs")
+            fixed.append(a.split("=", 1)[1])
+        elif a.startswith("--docs ") or a.startswith("-d "):
+            flag, _, path = a.partition(" ")
+            fixed.append("--docs" if flag.startswith("--") else "-d")
+            fixed.append(path.strip())
+        else:
+            fixed.append(a)
+
+    args, rest = parser.parse_known_args(fixed)
     if argv is None:
         sys.argv = [sys.argv[0], *rest]
 
