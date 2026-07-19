@@ -9,7 +9,12 @@
       "cwd": "/ABS/PATH/TO/architect-c4-mcp",
       "env": {
         "FASTMCP_SHOW_CLI_BANNER": "false",
+<<<<<<< HEAD
         "ARCHITECT_C4_DOCS": "/ABS/PATH/TO/product/docs"
+=======
+        "ARCHITECT_C4_DOCS": "/ABS/PATH/TO/product/docs",
+        "ARCHITECT_C4_WORKSPACE_ID": "default"
+>>>>>>> origin/main
       },
       "sidecar_spec": "architect-c4.json",
       "enabled": true

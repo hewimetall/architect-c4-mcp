@@ -119,8 +119,13 @@ context/decision/consequences = GFM (таблицы, код, списки). Бе
 
 | Есть | Нет |
 |------|-----|
+<<<<<<< HEAD
 | domain, app, validate, policy, render | служебные файлы как источник истины в `docs/` |
 | model / adr / flow → TOML + очередь | управление репозиториями продукта |
+=======
+| domain, app, validate, policy, render | SQLite / JSON как SoT в `docs/` |
+| model / adr / flow → toml + очередь | bare git + worktree как обязательный путь |
+>>>>>>> origin/main
 | git — commit на хосте в репо продукта | research-заметки в поставке |
 | Mermaid viewer по умолчанию | WASM в базовом образе |
 
