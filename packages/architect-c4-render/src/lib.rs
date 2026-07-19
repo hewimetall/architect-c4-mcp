@@ -974,10 +974,7 @@ fn drill_up_href(base: &str, up: &DrillUp, mode_all_focus: bool, use_wasm: bool)
             up.layer.as_str(),
             urlencoding(p)
         ),
-        None => format!(
-            "{base}/?layer={}&renderer={renderer}",
-            up.layer.as_str()
-        ),
+        None => format!("{base}/?layer={}&renderer={renderer}", up.layer.as_str()),
     }
 }
 
@@ -3843,10 +3840,7 @@ mod tests {
             git_commit_id: None,
         };
         let v = view_links("w", "https://c4.example.com", &els, &[d]).unwrap();
-        assert_eq!(
-            v["context_url"],
-            "https://c4.example.com/?layer=context"
-        );
+        assert_eq!(v["context_url"], "https://c4.example.com/?layer=context");
         assert_eq!(
             v["containers"][0]["component_url"],
             "https://c4.example.com/?layer=component&parent=api"

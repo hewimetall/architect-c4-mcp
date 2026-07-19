@@ -25,7 +25,7 @@ dependencies = [
 
 [[package]]
 name = "architect-c4-adr"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "architect-c4-domain",
  "architect-c4-git",
@@ -42,7 +42,7 @@ dependencies = [
 
 [[package]]
 name = "architect-c4-app"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "architect-c4-adr",
  "architect-c4-domain",
@@ -67,7 +67,7 @@ dependencies = [
 
 [[package]]
 name = "architect-c4-domain"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -76,7 +76,7 @@ dependencies = [
 
 [[package]]
 name = "architect-c4-flow"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "architect-c4-domain",
  "architect-c4-git",
@@ -91,7 +91,7 @@ dependencies = [
 
 [[package]]
 name = "architect-c4-git"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "architect-c4-domain",
  "gix",
@@ -102,7 +102,7 @@ dependencies = [
 
 [[package]]
 name = "architect-c4-model"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "architect-c4-domain",
  "architect-c4-revision",
@@ -117,7 +117,7 @@ dependencies = [
 
 [[package]]
 name = "architect-c4-policy"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "architect-c4-domain",
  "serde_json",
@@ -125,7 +125,7 @@ dependencies = [
 
 [[package]]
 name = "architect-c4-queue"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "architect-c4-domain",
  "parking_lot",
@@ -133,7 +133,7 @@ dependencies = [
 
 [[package]]
 name = "architect-c4-render"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "architect-c4-domain",
  "architect-c4-scene",
@@ -143,7 +143,7 @@ dependencies = [
 
 [[package]]
 name = "architect-c4-revision"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "architect-c4-domain",
  "parking_lot",
@@ -156,7 +156,7 @@ dependencies = [
 
 [[package]]
 name = "architect-c4-scene"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "architect-c4-domain",
  "serde",
@@ -165,7 +165,7 @@ dependencies = [
 
 [[package]]
 name = "architect-c4-session"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "architect-c4-domain",
  "parking_lot",
@@ -177,7 +177,7 @@ dependencies = [
 
 [[package]]
 name = "architect-c4-tomlio"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "architect-c4-domain",
  "serde",
@@ -190,7 +190,7 @@ dependencies = [
 
 [[package]]
 name = "architect-c4-validate"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "architect-c4-domain",
  "serde_json",
@@ -198,7 +198,7 @@ dependencies = [
 
 [[package]]
 name = "architect-c4-wasm"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "architect-c4-scene",
  "js-sys",
