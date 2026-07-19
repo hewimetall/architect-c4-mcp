@@ -26,7 +26,7 @@ uvx architect-c4-mcp \
   --docs /abs/path/to/product/docs \
   --transport http --host 127.0.0.1 --port 8766
 # MCP:  http://127.0.0.1:8766/mcp
-# View: http://127.0.0.1:8766/view?layer=context
+# View: http://127.0.0.1:8766/?layer=context
 ```
 
 Флаги: `--docs`/`-d`, `--transport`, `--host`, `--port`, `--public-base`.

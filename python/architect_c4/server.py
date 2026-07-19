@@ -15,7 +15,7 @@ from typing import Any
 
 from fastmcp import FastMCP
 from starlette.requests import Request
-from starlette.responses import HTMLResponse, JSONResponse, Response
+from starlette.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 
 from architect_c4 import native
 from architect_c4.prompts import register_prompts
@@ -91,7 +91,7 @@ def _j(s: str) -> Any:
 
 
 def _base_url(explicit: str | None = None) -> str:
-    """Resolve public HTTPS base for viewer links (rejects javascript:/http:)."""
+    """Resolve public HTTPS base for agent tool links (rejects javascript:/http:)."""
     if explicit and explicit.strip() and explicit.strip() != "https://localhost":
         candidate = explicit.strip().rstrip("/")
     else:
@@ -104,6 +104,20 @@ def _base_url(explicit: str | None = None) -> str:
     if "javascript:" in lower or "data:" in lower:
         raise ValueError("base_url scheme not allowed")
     return candidate
+
+
+def _viewer_html_base(request: Request) -> str:
+    """Base for hrefs inside HTML chrome.
+
+    Default is empty → relative links (``/?layer=…``, ``/adrs``) so local
+    ``http://127.0.0.1`` browsing does not jump to ``https://c4.example.com``.
+
+    Optional ``?base_url=https://…`` still forces absolute public links.
+    """
+    explicit = (request.query_params.get("base_url") or "").strip()
+    if explicit:
+        return _base_url(explicit)
+    return ""
 
 
 @mcp.tool()
@@ -325,12 +339,19 @@ def _html(html: str, status_code: int = 200) -> HTMLResponse:
     return resp
 
 
-@mcp.custom_route("/view/adrs/{adr_id}", methods=["GET"])
+def _legacy_view_redirect(request: Request, new_path: str) -> RedirectResponse:
+    """Keep old ``/view…`` bookmarks working → new root paths."""
+    qs = request.url.query
+    target = new_path if not qs else f"{new_path}?{qs}"
+    return RedirectResponse(url=target, status_code=308)
+
+
+@mcp.custom_route("/adrs/{adr_id}", methods=["GET"])
 async def c4_adr_detail(request: Request) -> Response:
     """Single ADR page."""
     _ensure_init()
     adr_id = request.path_params["adr_id"]
-    base = _base_url(request.query_params.get("base_url"))
+    base = _viewer_html_base(request)
     try:
         html = native.render_adr_html(adr_id, base)
     except Exception as e:
@@ -338,11 +359,11 @@ async def c4_adr_detail(request: Request) -> Response:
     return _html(html)
 
 
-@mcp.custom_route("/view/adrs", methods=["GET"])
+@mcp.custom_route("/adrs", methods=["GET"])
 async def c4_adrs_index(request: Request) -> Response:
     """ADR index."""
     _ensure_init()
-    base = _base_url(request.query_params.get("base_url"))
+    base = _viewer_html_base(request)
     try:
         html = native.render_adrs_html(base)
     except Exception as e:
@@ -350,12 +371,12 @@ async def c4_adrs_index(request: Request) -> Response:
     return _html(html)
 
 
-@mcp.custom_route("/view/flows/{flow_id}", methods=["GET"])
+@mcp.custom_route("/flows/{flow_id}", methods=["GET"])
 async def c4_flow_detail(request: Request) -> Response:
     """Single Flow page (Mermaid)."""
     _ensure_init()
     flow_id = request.path_params["flow_id"]
-    base = _base_url(request.query_params.get("base_url"))
+    base = _viewer_html_base(request)
     try:
         html = native.render_flow_html(flow_id, base)
     except Exception as e:
@@ -363,11 +384,11 @@ async def c4_flow_detail(request: Request) -> Response:
     return _html(html)
 
 
-@mcp.custom_route("/view/flows", methods=["GET"])
+@mcp.custom_route("/flows", methods=["GET"])
 async def c4_flows_index(request: Request) -> Response:
     """Flow index."""
     _ensure_init()
-    base = _base_url(request.query_params.get("base_url"))
+    base = _viewer_html_base(request)
     try:
         html = native.render_flows_html(base)
     except Exception as e:
@@ -375,21 +396,47 @@ async def c4_flows_index(request: Request) -> Response:
     return _html(html)
 
 
-@mcp.custom_route("/view", methods=["GET"])
-@mcp.custom_route("/view/", methods=["GET"])
+@mcp.custom_route("/", methods=["GET"])
 async def c4_view(request: Request) -> Response:
-    """Browser C4 viewer. Query: layer, parent, mode=all, renderer=mermaid|wasm|auto."""
+    """Browser C4 viewer at ``/``. Query: layer, parent, mode=all, renderer=mermaid|wasm|auto."""
     _ensure_init()
     layer = request.query_params.get("layer") or "context"
     parent_id = request.query_params.get("parent") or request.query_params.get("focus") or None
     mode = request.query_params.get("mode") or "layer"
     renderer = request.query_params.get("renderer") or "mermaid"
-    base = _base_url(request.query_params.get("base_url"))
+    base = _viewer_html_base(request)
     try:
         html = native.render_view_html(layer, parent_id, base, mode, renderer)
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=400)
     return _html(html)
+
+
+# Legacy aliases (pre-0.3.3)
+@mcp.custom_route("/view/adrs/{adr_id}", methods=["GET"])
+async def legacy_view_adr_detail(request: Request) -> Response:
+    return _legacy_view_redirect(request, f"/adrs/{request.path_params['adr_id']}")
+
+
+@mcp.custom_route("/view/adrs", methods=["GET"])
+async def legacy_view_adrs(request: Request) -> Response:
+    return _legacy_view_redirect(request, "/adrs")
+
+
+@mcp.custom_route("/view/flows/{flow_id}", methods=["GET"])
+async def legacy_view_flow_detail(request: Request) -> Response:
+    return _legacy_view_redirect(request, f"/flows/{request.path_params['flow_id']}")
+
+
+@mcp.custom_route("/view/flows", methods=["GET"])
+async def legacy_view_flows(request: Request) -> Response:
+    return _legacy_view_redirect(request, "/flows")
+
+
+@mcp.custom_route("/view", methods=["GET"])
+@mcp.custom_route("/view/", methods=["GET"])
+async def legacy_view_root(request: Request) -> Response:
+    return _legacy_view_redirect(request, "/")
 
 
 @mcp.custom_route("/wasm/{path:path}", methods=["GET"])

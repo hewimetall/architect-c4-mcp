@@ -27,7 +27,7 @@ pub fn diagram_for_layer(
         C4Layer::Component => c4_component(input, parent_id),
         C4Layer::Code => code_class_diagram(input, parent_id),
         C4Layer::Adr => {
-            String::from("flowchart TB\n  empty[\"ADR layer - use list_adrs or /view/.../adrs\"]\n")
+            String::from("flowchart TB\n  empty[\"ADR layer - use list_adrs or /adrs\"]\n")
         }
     }
 }
@@ -966,16 +966,16 @@ pub fn drill_up_target(
 fn drill_up_href(base: &str, up: &DrillUp, mode_all_focus: bool, use_wasm: bool) -> String {
     let renderer = if use_wasm { "wasm" } else { "mermaid" };
     if mode_all_focus && up.kind_label == "all" {
-        return format!("{base}/view?mode=all&renderer={renderer}");
+        return format!("{base}/?mode=all&renderer={renderer}");
     }
     match &up.parent_id {
         Some(p) => format!(
-            "{base}/view?layer={}&parent={}&renderer={renderer}",
+            "{base}/?layer={}&parent={}&renderer={renderer}",
             up.layer.as_str(),
             urlencoding(p)
         ),
         None => format!(
-            "{base}/view?layer={}&renderer={renderer}",
+            "{base}/?layer={}&renderer={renderer}",
             up.layer.as_str()
         ),
     }
@@ -1004,7 +1004,7 @@ pub fn view_html(
         let renderer = if use_wasm { "wasm" } else { "mermaid" };
         if let Some(focus) = parent_id {
             format!(
-                r#"<nav class="crumbs"><a href="{base}/view?mode=all&amp;renderer={renderer}">All layers</a><span class="sep">/</span> focus <code>{focus}</code></nav>"#,
+                r#"<nav class="crumbs"><a href="{base}/?mode=all&amp;renderer={renderer}">All layers</a><span class="sep">/</span> focus <code>{focus}</code></nav>"#,
                 base = base,
                 renderer = renderer,
                 focus = html_escape(focus),
@@ -1035,16 +1035,16 @@ pub fn view_html(
     let renderer_label = if use_wasm { "WASM" } else { "Mermaid" };
     let top_nav = format!(
         r#"<nav class="top-tabs" aria-label="Primary">
-      <a class="tab{diagrams_active}" href="{base}/view?layer=context">Diagrams</a>
-      <a class="tab{all_active}" href="{base}/view?mode=all&amp;renderer=wasm{focus_q}">All</a>
-      <a class="tab" href="{base}/view/flows">Flows ({nf})</a>
-      <a class="tab" href="{base}/view/adrs">ADRs ({n})</a>
+      <a class="tab{diagrams_active}" href="{base}/?layer=context">Diagrams</a>
+      <a class="tab{all_active}" href="{base}/?mode=all&amp;renderer=wasm{focus_q}">All</a>
+      <a class="tab" href="{base}/flows">Flows ({nf})</a>
+      <a class="tab" href="{base}/adrs">ADRs ({n})</a>
     </nav>
     <div class="renderer-switch" role="group" aria-label="Renderer">
       <span class="renderer-label">Render <strong>{renderer_label}</strong></span>
       <nav class="top-tabs renderer-tabs" aria-label="Choose renderer">
-        <a class="tab{mermaid_active}" href="{base}/view?{view_q}&amp;renderer=mermaid" title="Mermaid SVG">Mermaid</a>
-        <a class="tab{wasm_active}" href="{base}/view?{view_q}&amp;renderer=wasm" title="WASM Canvas2D">WASM</a>
+        <a class="tab{mermaid_active}" href="{base}/?{view_q}&amp;renderer=mermaid" title="Mermaid SVG">Mermaid</a>
+        <a class="tab{wasm_active}" href="{base}/?{view_q}&amp;renderer=wasm" title="WASM Canvas2D">WASM</a>
       </nav>
     </div>"#,
         base = base,
@@ -1086,7 +1086,7 @@ pub fn view_html(
         for e in drills {
             if let Some(next) = e.kind.drill_layer() {
                 drill_html.push_str(&format!(
-                    r#"<li><a class="drill" href="{base}/view?layer={layer}&parent={pid}"><span class="kind">{kind}</span><span class="name">{name}</span><span class="chev">→</span></a></li>"#,
+                    r#"<li><a class="drill" href="{base}/?layer={layer}&parent={pid}"><span class="kind">{kind}</span><span class="name">{name}</span><span class="chev">→</span></a></li>"#,
                     base = base,
                     layer = next.as_str(),
                     pid = urlencoding(&e.id),
@@ -1170,7 +1170,7 @@ pub fn view_html(
     // WASM: redraw on zoom (setTransform). Mermaid SVG: CSS transform stays sharp (vectors).
     let stage_inner = if use_wasm {
         let mermaid_fallback = format!(
-            "{base}/view?mode=all&renderer=mermaid{focus}",
+            "{base}/?mode=all&renderer=mermaid{focus}",
             base = base,
             focus = parent_id
                 .map(|p| format!("&focus={}", urlencoding(p)))
@@ -2093,7 +2093,7 @@ fn viewer_shell_css() -> &'static str {
 "#
 }
 
-/// One workspace row for the `/view/` project index.
+/// One workspace row for the `/` project index.
 #[derive(Debug, Clone)]
 pub struct WorkspaceCard {
     pub id: String,
@@ -2125,7 +2125,7 @@ pub fn workspaces_index_html(base_url: &str, cards: &[WorkspaceCard]) -> String 
                 rows.push_str(&format!(
                     r#"<article class="ws-card">
   <div class="ws-head">
-    <h3><a href="{base}/view?mode=all&amp;renderer=wasm">{name}</a></h3>
+    <h3><a href="{base}/?mode=all&amp;renderer=wasm">{name}</a></h3>
     <span class="pill">{ref_name}</span>
   </div>
   <p class="mono ws-id"><code>{id}</code></p>
@@ -2136,10 +2136,10 @@ pub fn workspaces_index_html(base_url: &str, cards: &[WorkspaceCard]) -> String 
     <li><strong>{flows}</strong> flows</li>
   </ul>
   <nav class="ws-links" aria-label="Open workspace">
-    <a class="btn primary" href="{base}/view?mode=all&amp;renderer=wasm">All (WASM)</a>
-    <a class="btn" href="{base}/view?layer=context">Context</a>
-    <a class="btn" href="{base}/view/flows">Flows</a>
-    <a class="btn" href="{base}/view/adrs">ADRs</a>
+    <a class="btn primary" href="{base}/?mode=all&amp;renderer=wasm">All (WASM)</a>
+    <a class="btn" href="{base}/?layer=context">Context</a>
+    <a class="btn" href="{base}/flows">Flows</a>
+    <a class="btn" href="{base}/adrs">ADRs</a>
   </nav>
 </article>"#,
                     base = base,
@@ -2235,7 +2235,7 @@ pub fn workspaces_index_html(base_url: &str, cards: &[WorkspaceCard]) -> String 
       <div class="mono">{n} workspace(s) · architect-c4</div>
     </div>
     <nav class="top-tabs" aria-label="Primary">
-      <a class="tab" href="{base}/view?layer=context">Diagrams</a>
+      <a class="tab" href="{base}/?layer=context">Diagrams</a>
     </nav>
   </header>
   <main>
@@ -2261,8 +2261,8 @@ pub fn adrs_index_html(_workspace_id: &str, base_url: &str, decisions: &[Decisio
         for d in decisions {
             rows.push_str(&format!(
                 r#"<tr>
-                  <td><a href="{base}/view/adrs/{id}"><code>{id}</code></a></td>
-                  <td><a class="title" href="{base}/view/adrs/{id}">{title}</a></td>
+                  <td><a href="{base}/adrs/{id}"><code>{id}</code></a></td>
+                  <td><a class="title" href="{base}/adrs/{id}">{title}</a></td>
                   <td><span class="status {st}">{st}</span></td>
                   <td><code>{scope}</code></td>
                   <td class="mono">{date}</td>
@@ -2312,10 +2312,10 @@ pub fn adrs_index_html(_workspace_id: &str, base_url: &str, decisions: &[Decisio
       <div class="mono">{n} ADR(s)</div>
     </div>
     <nav class="top-tabs" aria-label="Primary">
-      <a class="tab" href="{base}/view?layer=context">Diagrams</a>
-      <a class="tab" href="{base}/view?mode=all&amp;renderer=wasm">All</a>
-      <a class="tab" href="{base}/view/flows">Flows</a>
-      <a class="tab active" href="{base}/view/adrs">ADRs ({n})</a>
+      <a class="tab" href="{base}/?layer=context">Diagrams</a>
+      <a class="tab" href="{base}/?mode=all&amp;renderer=wasm">All</a>
+      <a class="tab" href="{base}/flows">Flows</a>
+      <a class="tab active" href="{base}/adrs">ADRs ({n})</a>
     </nav>
   </header>
   <main>
@@ -2380,7 +2380,7 @@ pub fn adr_detail_html(_workspace_id: &str, base_url: &str, decision: &Decision)
         body.push_str("<h2>Related flows</h2><ul class=\"related-flows\">");
         for fid in &decision.related_flows {
             body.push_str(&format!(
-                r#"<li><a href="{base}/view/flows/{id}"><code>{id}</code></a></li>"#,
+                r#"<li><a href="{base}/flows/{id}"><code>{id}</code></a></li>"#,
                 base = base,
                 id = urlencoding(fid),
             ));
@@ -2437,10 +2437,10 @@ pub fn adr_detail_html(_workspace_id: &str, base_url: &str, decision: &Decision)
   <header class="topbar">
     <div>
       <nav class="top-tabs" aria-label="Primary" style="margin-bottom:.45rem;display:inline-flex">
-        <a class="tab" href="{base}/view?layer=context">Diagrams</a>
-        <a class="tab" href="{base}/view?mode=all&amp;renderer=wasm">All</a>
-        <a class="tab" href="{base}/view/flows">Flows</a>
-        <a class="tab active" href="{base}/view/adrs">ADRs</a>
+        <a class="tab" href="{base}/?layer=context">Diagrams</a>
+        <a class="tab" href="{base}/?mode=all&amp;renderer=wasm">All</a>
+        <a class="tab" href="{base}/flows">Flows</a>
+        <a class="tab active" href="{base}/adrs">ADRs</a>
       </nav>
       <div class="id-row"><code>{id}</code> <span class="status {status}">{status}</span></div>
       <h1>{title}</h1>
@@ -2478,7 +2478,7 @@ fn breadcrumb_html(
 ) -> String {
     let find = |id: &str| elements.iter().find(|e| e.id == id);
     let mut parts = vec![format!(
-        r#"<a href="{base}/view?layer=context">Context</a>"#,
+        r#"<a href="{base}/?layer=context">Context</a>"#,
         base = base
     )];
     match layer {
@@ -2494,7 +2494,7 @@ fn breadcrumb_html(
             if let Some(sys) = up_parent_id {
                 parts.push(r#"<span class="sep">/</span>"#.into());
                 parts.push(format!(
-                    r#"<a href="{base}/view?layer=container&parent={sys}">Container</a>"#,
+                    r#"<a href="{base}/?layer=container&parent={sys}">Container</a>"#,
                     base = base,
                     sys = urlencoding(sys)
                 ));
@@ -2512,14 +2512,14 @@ fn breadcrumb_html(
                 if let Some(sys) = find(container).and_then(|c| c.parent_id.as_deref()) {
                     parts.push(r#"<span class="sep">/</span>"#.into());
                     parts.push(format!(
-                        r#"<a href="{base}/view?layer=container&parent={sys}">Container</a>"#,
+                        r#"<a href="{base}/?layer=container&parent={sys}">Container</a>"#,
                         base = base,
                         sys = urlencoding(sys)
                     ));
                 }
                 parts.push(r#"<span class="sep">/</span>"#.into());
                 parts.push(format!(
-                    r#"<a href="{base}/view?layer=component&parent={container}">Component</a>"#,
+                    r#"<a href="{base}/?layer=component&parent={container}">Component</a>"#,
                     base = base,
                     container = urlencoding(container)
                 ));
@@ -2664,7 +2664,7 @@ pub fn view_links(
     decisions: &[Decision],
 ) -> Result<serde_json::Value, String> {
     let base = normalize_public_base(base_url)?;
-    let view_url = format!("{base}/view");
+    let view_url = format!("{base}/");
     let mut systems = Vec::new();
     let mut containers = Vec::new();
     let mut components = Vec::new();
@@ -2674,7 +2674,7 @@ pub fn view_links(
                 systems.push(serde_json::json!({
                     "id": e.id,
                     "name": e.name,
-                    "container_url": format!("{view_url}?layer=container&parent={}", urlencoding(&e.id)),
+                    "container_url": format!("{base}/?layer=container&parent={}", urlencoding(&e.id)),
                 }));
             }
             ElementKind::Container => {
@@ -2682,7 +2682,7 @@ pub fn view_links(
                     "id": e.id,
                     "name": e.name,
                     "parent_id": e.parent_id,
-                    "component_url": format!("{view_url}?layer=component&parent={}", urlencoding(&e.id)),
+                    "component_url": format!("{base}/?layer=component&parent={}", urlencoding(&e.id)),
                 }));
             }
             ElementKind::Component => {
@@ -2690,7 +2690,7 @@ pub fn view_links(
                     "id": e.id,
                     "name": e.name,
                     "parent_id": e.parent_id,
-                    "code_url": format!("{view_url}?layer=code&parent={}", urlencoding(&e.id)),
+                    "code_url": format!("{base}/?layer=code&parent={}", urlencoding(&e.id)),
                 }));
             }
             _ => {}
@@ -2703,16 +2703,16 @@ pub fn view_links(
                 "id": d.id,
                 "title": d.title,
                 "status": d.status.as_str(),
-                "view_url": format!("{view_url}/adrs/{}", urlencoding(&d.id)),
+                "view_url": format!("{base}/adrs/{}", urlencoding(&d.id)),
             })
         })
         .collect();
     Ok(serde_json::json!({
         "base_url": base,
         "view_url": view_url,
-        "context_url": format!("{view_url}?layer=context"),
-        "flows_url": format!("{view_url}/flows"),
-        "adrs_url": format!("{view_url}/adrs"),
+        "context_url": format!("{base}/?layer=context"),
+        "flows_url": format!("{base}/flows"),
+        "adrs_url": format!("{base}/adrs"),
         "systems": systems,
         "containers": containers,
         "components": components,
@@ -2776,8 +2776,8 @@ pub fn flows_index_html(
         for f in flows {
             rows.push_str(&format!(
                 r#"<tr>
-                  <td><a href="{base}/view/flows/{id}"><code>{id}</code></a></td>
-                  <td><a class="title" href="{base}/view/flows/{id}">{title}</a></td>
+                  <td><a href="{base}/flows/{id}"><code>{id}</code></a></td>
+                  <td><a class="title" href="{base}/flows/{id}">{title}</a></td>
                   <td><span class="status proposed">{kind}</span></td>
                   <td><code>{usage}</code></td>
                   <td class="mono">{adrs}</td>
@@ -2819,10 +2819,10 @@ pub fn flows_index_html(
       <div class="mono">{n} flow(s)</div>
     </div>
     <nav class="top-tabs" aria-label="Primary">
-      <a class="tab" href="{base}/view?layer=context">Diagrams</a>
-      <a class="tab" href="{base}/view?mode=all&amp;renderer=wasm">All</a>
-      <a class="tab active" href="{base}/view/flows">Flows ({n})</a>
-      <a class="tab" href="{base}/view/adrs">ADRs ({na})</a>
+      <a class="tab" href="{base}/?layer=context">Diagrams</a>
+      <a class="tab" href="{base}/?mode=all&amp;renderer=wasm">All</a>
+      <a class="tab active" href="{base}/flows">Flows ({n})</a>
+      <a class="tab" href="{base}/adrs">ADRs ({na})</a>
     </nav>
   </header>
   <main>
@@ -2862,18 +2862,18 @@ pub fn flow_detail_html(
         }
         let href = match e.kind {
             ElementKind::Person | ElementKind::SoftwareSystem | ElementKind::External => {
-                format!("{base}/view?layer=context")
+                format!("{base}/?layer=context")
             }
             ElementKind::Container => format!(
-                "{base}/view?layer=container&parent={}",
+                "{base}/?layer=container&parent={}",
                 urlencoding(e.parent_id.as_deref().unwrap_or(""))
             ),
             ElementKind::Component => format!(
-                "{base}/view?layer=component&parent={}",
+                "{base}/?layer=component&parent={}",
                 urlencoding(e.parent_id.as_deref().unwrap_or(""))
             ),
             ElementKind::Code => format!(
-                "{base}/view?layer=code&parent={}",
+                "{base}/?layer=code&parent={}",
                 urlencoding(e.parent_id.as_deref().unwrap_or(""))
             ),
         };
@@ -2900,7 +2900,7 @@ pub fn flow_detail_html(
     }
     for adr in &flow.related_adrs {
         links.push_str(&format!(
-            r#"<li><a class="drill" href="{base}/view/adrs/{id}"><span class="kind">adr</span><span class="name">{id}</span><span class="chev">↗</span></a></li>"#,
+            r#"<li><a class="drill" href="{base}/adrs/{id}"><span class="kind">adr</span><span class="name">{id}</span><span class="chev">↗</span></a></li>"#,
             base = base,
             id = urlencoding(adr),
         ));
@@ -2944,9 +2944,9 @@ pub fn flow_detail_html(
       </div>
     </div>
     <nav class="top-tabs" aria-label="Primary">
-      <a class="tab" href="{base}/view?layer=context">Diagrams</a>
-      <a class="tab" href="{base}/view/flows">Flows ({nf})</a>
-      <a class="tab" href="{base}/view/adrs">ADRs ({na})</a>
+      <a class="tab" href="{base}/?layer=context">Diagrams</a>
+      <a class="tab" href="{base}/flows">Flows ({nf})</a>
+      <a class="tab" href="{base}/adrs">ADRs ({na})</a>
     </nav>
   </header>
   <main>
@@ -3040,8 +3040,8 @@ mod tests {
         );
         assert!(html.contains("Projects"));
         assert!(html.contains(">ceph<"));
-        assert!(html.contains("/view?mode=all"));
-        assert!(html.contains("/view?layer=context"));
+        assert!(html.contains("/?mode=all"));
+        assert!(html.contains("/?layer=context"));
         assert!(html.contains("10</strong> elements"));
     }
 
@@ -3295,7 +3295,7 @@ mod tests {
                     workspace_id: "w".into(),
                     from_id: "tools".into(),
                     to_id: "view".into(),
-                    description: Some("get_*_diagram → /view* HTML".into()),
+                    description: Some("get_*_diagram → /* HTML".into()),
                     technology: None,
                 }],
                 base_url: "https://c4.example.com",
@@ -3312,7 +3312,7 @@ mod tests {
             "edge label should be quoted: {edge}"
         );
         assert!(
-            !edge.contains("_*_") && !edge.contains('→') && !edge.contains(" /view*"),
+            !edge.contains("_*_") && !edge.contains('→') && !edge.contains(" /*"),
             "specials must be sanitized: {edge}"
         );
         assert!(
@@ -3409,7 +3409,7 @@ mod tests {
         };
         let html = adrs_index_html("w", "https://c4.example.com", std::slice::from_ref(&d));
         assert!(html.contains("Use Redis"));
-        assert!(html.contains("/view/adrs/adr-1"));
+        assert!(html.contains("/adrs/adr-1"));
         assert!(html.contains("legend-panel"));
         assert!(html.contains("Decision status"));
         assert!(html.contains("--accent: #4f46e5"));
@@ -3423,7 +3423,7 @@ mod tests {
         assert!(detail.contains("top-tabs"));
         assert!(detail.contains("Diagrams"));
         assert!(detail.contains("Related flows"));
-        assert!(detail.contains("/view/flows/rgw-usage-record-on-request"));
+        assert!(detail.contains("/flows/rgw-usage-record-on-request"));
     }
 
     #[test]
@@ -3845,15 +3845,15 @@ mod tests {
         let v = view_links("w", "https://c4.example.com", &els, &[d]).unwrap();
         assert_eq!(
             v["context_url"],
-            "https://c4.example.com/view?layer=context"
+            "https://c4.example.com/?layer=context"
         );
         assert_eq!(
             v["containers"][0]["component_url"],
-            "https://c4.example.com/view?layer=component&parent=api"
+            "https://c4.example.com/?layer=component&parent=api"
         );
         assert_eq!(
             v["adrs"][0]["view_url"],
-            "https://c4.example.com/view/adrs/adr-1"
+            "https://c4.example.com/adrs/adr-1"
         );
         assert!(view_links("w", "javascript:x", &els, &[]).is_err());
     }

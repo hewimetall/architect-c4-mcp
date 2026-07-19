@@ -10,8 +10,8 @@ template: |
   Open architect-c4 WASM / All-layers view.
 
   URLs:
-  - All layers (Mermaid): /view?mode=all
-  - All layers (WASM): /view?mode=all&renderer=wasm{{#if focus}}&focus={{focus}}{{/if}}
+  - All layers (Mermaid): /?mode=all
+  - All layers (WASM): /?mode=all&renderer=wasm{{#if focus}}&focus={{focus}}{{/if}}
   - Cascade note: preferred_backend() returns webgpu|canvas2d; draw uses Canvas2D until wgpu mesh lands.
 
   GraphQL batch:
