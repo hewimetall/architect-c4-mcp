@@ -1,7 +1,8 @@
 # Публикация на PyPI
 
 Пакет: **`architect-c4`** (готовые wheels + sdist).  
-Триггер: git tag `v*` → workflow `.github/workflows/release.yml`.
+Триггер: git tag `v*` → workflow `.github/workflows/release.yml`  
+(сначала job `quality`: pytest + cargo + coverage ≥93%, затем wheels / PyPI / GHCR).
 
 ## Один раз: Trusted Publisher
 

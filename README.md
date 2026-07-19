@@ -108,8 +108,8 @@ uv run architect-c4 --docs ./examples/docs
 
 | Событие | Что делает |
 |---------|------------|
-| push / PR | pytest, cargo, coverage ≥93%, lint, docker build |
-| tag `v*` | PyPI wheels, GitHub Release, GHCR |
+| push / PR | pytest, `cargo test`, lint, docker build |
+| tag `v*` | coverage ≥93% (py+rust) → PyPI wheels, GitHub Release, GHCR |
 
 ## Лицензия
 
