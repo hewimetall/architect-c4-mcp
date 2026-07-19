@@ -18,9 +18,9 @@
 ## Релиз
 
 ```bash
-# версия в pyproject.toml и Cargo crates = 0.3.0 → тег v0.3.0
-git tag v0.3.0
-git push origin v0.3.0
+# версия в pyproject.toml и Cargo crates = 0.3.1 → тег v0.3.1
+git tag v0.3.1
+git push origin v0.3.1
 ```
 
 Workflow соберёт manylinux/musllinux/macOS/Windows wheels + sdist, зальёт на PyPI, сделает GitHub Release и пушнет образ в GHCR.
@@ -28,9 +28,9 @@ Workflow соберёт manylinux/musllinux/macOS/Windows wheels + sdist, зал
 ## Проверка после релиза
 
 ```bash
-uvx architect-c4==0.3.0 --docs /path/to/docs
+uvx architect-c4==0.3.1 --docs /path/to/docs
 # или
-pip install architect-c4==0.3.0
+pip install architect-c4==0.3.1
 architect-c4 --docs /path/to/docs
 ```
 

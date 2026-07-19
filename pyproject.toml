@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "architect-c4"
-version = "0.3.0"
+version = "0.3.1"
 description = "C4 architecture MCP sidecar — TOML under docs/, Rust write queue"
 requires-python = ">=3.12"
 readme = "README.md"
