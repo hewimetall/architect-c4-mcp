@@ -88,11 +88,7 @@ impl FlowService {
         Ok(())
     }
 
-    fn persist(
-        &self,
-        mut flow: Flow,
-        commit: bool,
-    ) -> Result<(Flow, Option<String>), DomainError> {
+    fn persist(&self, mut flow: Flow, commit: bool) -> Result<(Flow, Option<String>), DomainError> {
         self.validate_refs(&flow)?;
         let wt = self.worktree(&flow.workspace_id)?;
         let rel = format!("docs/flows/{}.toml", flow.id);

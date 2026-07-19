@@ -25,9 +25,7 @@ impl MemoryModelStore {
 
     /// Drop all elements/relationships for a workspace (sidecar rebind).
     pub fn clear_workspace(&self, workspace_id: &str) -> Result<(), DomainError> {
-        self.elements
-            .lock()
-            .retain(|(ws, _), _| ws != workspace_id);
+        self.elements.lock().retain(|(ws, _), _| ws != workspace_id);
         self.relationships
             .lock()
             .retain(|(ws, _), _| ws != workspace_id);
