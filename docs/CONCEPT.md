@@ -27,7 +27,7 @@ architect-c4 (sidecar)   ← этот сервис, mount на docs/
 ## Правила
 
 1. На диске в `docs/` — **только TOML**, без JSON-файлов.
-2. **SQLite в репо нет.** Истина — toml; история — git.
+2. Истина — TOML; история — git.
 3. Все записи идут через **очередь на Rust** (один writer).
 4. Python — тонкий FastMCP; логика — Rust/PyO3.
 5. Просмотр по умолчанию — **Mermaid**. WASM — по желанию, не в базовом образе.
@@ -47,8 +47,7 @@ docs/
   flows/{id}.toml
 ```
 
-**ADR:** поля Nygard + policy/refs; `context` / `decision` / `consequences` — GFM (таблицы, код, списки), без raw HTML; многострочники через `'''`; лимит prose **20000**; агент ставит только `draft` | `proposed`.  
-Старые `.json` при bind один раз переписываются в `.toml`.
+**ADR:** поля Nygard + policy/refs; `context` / `decision` / `consequences` — GFM (таблицы, код, списки), без raw HTML; многострочники через `'''`; лимит prose **20000**; агент ставит только `draft` | `proposed`.
 
 **Flow:** `c4_dynamic` | `sequence` | `state`; шаги ссылаются на существующие id элементов.
 
@@ -68,7 +67,7 @@ docs/
 
 Чтение — из снимка в памяти (перечитывается с диска при изменении файлов).
 
-Очередь **в процессе**, не Redis и не SQLite. После рестарта недописанные jobs пропадают; на диске остаётся то, что уже записано в toml.
+Очередь **в процессе**. После рестарта недописанные jobs пропадают; на диске остаётся то, что уже записано в TOML.
 
 ---
 
@@ -120,8 +119,8 @@ context/decision/consequences = GFM (таблицы, код, списки). Бе
 
 | Есть | Нет |
 |------|-----|
-| domain, app, validate, policy, render | SQLite / JSON как SoT в `docs/` |
-| model / adr / flow → toml + очередь | bare git + worktree как обязательный путь |
+| domain, app, validate, policy, render | служебные файлы как источник истины в `docs/` |
+| model / adr / flow → TOML + очередь | управление репозиториями продукта |
 | git — commit на хосте в репо продукта | research-заметки в поставке |
 | Mermaid viewer по умолчанию | WASM в базовом образе |
 
@@ -160,7 +159,7 @@ services:
 - push/PR: тесты Python + Rust, coverage ≥ 93%, lint, сборка Docker  
 - tag `v*`: PyPI (`architect-c4` wheels) + GitHub Release + образ в GHCR  
 
-Обязательные тесты: toml round-trip ADR/flow, rewrite json→toml, очередь сериализует запись, bind без `.db`, список промптов.
+Обязательные тесты: TOML round-trip ADR/flow, очередь сериализует запись, bind на `docs/`, список промптов.
 
 ---
 
@@ -168,7 +167,7 @@ services:
 
 - для работы достаточно `ARCHITECT_C4_DOCS`
 - в репо продукта появляются только `docs/**/*.toml`
-- нет `.db` и JSON ADR/Flow
+- ADR/Flow пишутся как TOML
 - параллельные upsert не ломают файлы
 - ADR в viewer — HTML из GFM
 - есть 5 промптов и зелёный CI с образом

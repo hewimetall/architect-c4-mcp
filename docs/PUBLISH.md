@@ -17,7 +17,7 @@
 ## Релиз
 
 ```bash
-# версия в pyproject.toml и Cargo workspace = 0.3.0 → тег v0.3.0
+# версия в pyproject.toml и Cargo crates = 0.3.0 → тег v0.3.0
 git tag v0.3.0
 git push origin v0.3.0
 ```

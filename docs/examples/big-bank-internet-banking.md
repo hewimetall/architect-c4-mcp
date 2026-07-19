@@ -1,16 +1,13 @@
-# Example: Big Bank plc — Internet Banking System
+# Пример: Big Bank plc — Internet Banking System
 
-Canonical C4 walkthrough (Simon Brown / [c4model.com](https://c4model.com/)) built
-live in **architect-c4**.
+Канонический C4 walkthrough Simon Brown / [c4model.com](https://c4model.com/),
+который можно завести через MCP-инструменты architect-c4.
 
-## Sources
+## Источники
 
-- Official C4 site: <https://c4model.com/>
-- Interactive example: <https://c4model.com/example>
-- Case study article: [Applying the C4 Model to the Internet Banking System](https://www.cybermedian.com/a-comprehensive-step-by-step-case-study-applying-the-c4-model-to-the-internet-banking-system-big-bank-plc/)
-- Skills in this repo:
-  - `.cursor/skills/c4-architect-modeling/`
-  - `.cursor/skills/architecture-decision-records/`
+- Официальный сайт C4: <https://c4model.com/>
+- Интерактивный пример: <https://c4model.com/example>
+- Разбор: [Applying the C4 Model to the Internet Banking System](https://www.cybermedian.com/a-comprehensive-step-by-step-case-study-applying-the-c4-model-to-the-internet-banking-system-big-bank-plc/)
 
 ## Viewer
 
@@ -20,13 +17,13 @@ live in **architect-c4**.
 - Code (Security): <https://c4.example.com/view?layer=code&parent=security>
 - ADRs: <https://c4.example.com/view/adrs>
 
-### Agent
+### Агент
 
 ```text
 get_view_links()
 ```
 
-## What was modeled
+## Что смоделировано
 
 1. **Context** — Customer, Internet Banking System, Mainframe (external), E-mail (external)
 2. **Containers** — Web App, SPA, Mobile App, API Application, Database

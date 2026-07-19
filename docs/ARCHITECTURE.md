@@ -6,7 +6,7 @@
 Agent → FastMCP tools/prompts
          → Rust Write Queue (serial)
          → TomlWriter → docs/**/*.toml
-         → Snapshot in-memory (SQLite :memory: только как индекс)
+         → Snapshot in-memory
 Browser → /view, /view/adrs, /view/flows (Mermaid)
 ```
 

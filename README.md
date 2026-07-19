@@ -12,7 +12,7 @@ MCP-sidecar: агент пишет **C4 + ADR + Flow** в `docs/` вашего g
 architect-c4 (sidecar)  ← FastMCP + очередь записи Rust
 ```
 
-- на диске продукта — **только TOML** (без JSON и без SQLite в репо)
+- на диске продукта — **только TOML**
 - запись через **очередь Rust**
 - история — **git**
 - промпты: https://gofastmcp.com/servers/prompts
