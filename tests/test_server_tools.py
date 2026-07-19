@@ -483,13 +483,25 @@ def test_view_routes(docs: Path):
         commit=True,
     )
     client = TestClient(server.mcp.http_app())
-    assert client.get("/?base_url=https://c4.example.com").status_code == 200
-    assert client.get("/flows?base_url=https://c4.example.com").status_code == 200
-    assert client.get("/flows/f-view?base_url=https://c4.example.com").status_code == 200
-    assert client.get("/adrs?base_url=https://c4.example.com").status_code == 200
-    assert client.get("/adrs/0001-v?base_url=https://c4.example.com").status_code == 200
+    # Relative chrome links (no default jump to c4.example.com)
+    home = client.get("/")
+    assert home.status_code == 200
+    assert "c4.example.com" not in home.text
+    assert 'href="/?layer=context"' in home.text or 'href="/?layer=context&' in home.text
+    assert 'href="/flows"' in home.text
+    assert 'href="/adrs"' in home.text
+    assert client.get("/flows").status_code == 200
+    assert client.get("/flows/f-view").status_code == 200
+    assert client.get("/adrs").status_code == 200
+    assert client.get("/adrs/0001-v").status_code == 200
+    assert client.get("/?mode=all").status_code == 200
+    assert client.get("/?layer=context&renderer=wasm").status_code == 200
+    # Optional absolute override still works
+    abs_page = client.get("/?base_url=https://c4.example.com")
+    assert abs_page.status_code == 200
+    assert "https://c4.example.com" in abs_page.text
     # legacy /view → 308
-    assert client.get("/view/?base_url=https://c4.example.com", follow_redirects=False).status_code == 308
+    assert client.get("/view/", follow_redirects=False).status_code == 308
     assert client.get("/wasm/missing.js").status_code == 404
 
 

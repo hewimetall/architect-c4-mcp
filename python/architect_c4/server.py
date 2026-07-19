@@ -91,7 +91,7 @@ def _j(s: str) -> Any:
 
 
 def _base_url(explicit: str | None = None) -> str:
-    """Resolve public HTTPS base for viewer links (rejects javascript:/http:)."""
+    """Resolve public HTTPS base for agent tool links (rejects javascript:/http:)."""
     if explicit and explicit.strip() and explicit.strip() != "https://localhost":
         candidate = explicit.strip().rstrip("/")
     else:
@@ -104,6 +104,20 @@ def _base_url(explicit: str | None = None) -> str:
     if "javascript:" in lower or "data:" in lower:
         raise ValueError("base_url scheme not allowed")
     return candidate
+
+
+def _viewer_html_base(request: Request) -> str:
+    """Base for hrefs inside HTML chrome.
+
+    Default is empty → relative links (``/?layer=…``, ``/adrs``) so local
+    ``http://127.0.0.1`` browsing does not jump to ``https://c4.example.com``.
+
+    Optional ``?base_url=https://…`` still forces absolute public links.
+    """
+    explicit = (request.query_params.get("base_url") or "").strip()
+    if explicit:
+        return _base_url(explicit)
+    return ""
 
 
 @mcp.tool()
@@ -337,7 +351,7 @@ async def c4_adr_detail(request: Request) -> Response:
     """Single ADR page."""
     _ensure_init()
     adr_id = request.path_params["adr_id"]
-    base = _base_url(request.query_params.get("base_url"))
+    base = _viewer_html_base(request)
     try:
         html = native.render_adr_html(adr_id, base)
     except Exception as e:
@@ -349,7 +363,7 @@ async def c4_adr_detail(request: Request) -> Response:
 async def c4_adrs_index(request: Request) -> Response:
     """ADR index."""
     _ensure_init()
-    base = _base_url(request.query_params.get("base_url"))
+    base = _viewer_html_base(request)
     try:
         html = native.render_adrs_html(base)
     except Exception as e:
@@ -362,7 +376,7 @@ async def c4_flow_detail(request: Request) -> Response:
     """Single Flow page (Mermaid)."""
     _ensure_init()
     flow_id = request.path_params["flow_id"]
-    base = _base_url(request.query_params.get("base_url"))
+    base = _viewer_html_base(request)
     try:
         html = native.render_flow_html(flow_id, base)
     except Exception as e:
@@ -374,7 +388,7 @@ async def c4_flow_detail(request: Request) -> Response:
 async def c4_flows_index(request: Request) -> Response:
     """Flow index."""
     _ensure_init()
-    base = _base_url(request.query_params.get("base_url"))
+    base = _viewer_html_base(request)
     try:
         html = native.render_flows_html(base)
     except Exception as e:
@@ -390,7 +404,7 @@ async def c4_view(request: Request) -> Response:
     parent_id = request.query_params.get("parent") or request.query_params.get("focus") or None
     mode = request.query_params.get("mode") or "layer"
     renderer = request.query_params.get("renderer") or "mermaid"
-    base = _base_url(request.query_params.get("base_url"))
+    base = _viewer_html_base(request)
     try:
         html = native.render_view_html(layer, parent_id, base, mode, renderer)
     except Exception as e:

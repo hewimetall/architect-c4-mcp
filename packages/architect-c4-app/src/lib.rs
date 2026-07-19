@@ -457,6 +457,15 @@ fn require_base(base_url: &str) -> PyResult<String> {
     normalize_public_base(base_url).map_err(pyo3::exceptions::PyValueError::new_err)
 }
 
+/// HTML chrome may use an empty base → relative hrefs (`/?layer=…`, `/adrs`).
+fn require_html_base(base_url: &str) -> PyResult<String> {
+    let s = base_url.trim().trim_end_matches('/');
+    if s.is_empty() {
+        return Ok(String::new());
+    }
+    require_base(s)
+}
+
 #[pyfunction]
 fn get_overview_diagram(base_url: &str) -> PyResult<String> {
     let s = state()?;
@@ -520,7 +529,7 @@ fn render_view_html(
     renderer: &str,
 ) -> PyResult<String> {
     let s = state()?;
-    let base = require_base(base_url)?;
+    let base = require_html_base(base_url)?;
     let view_mode = ViewMode::parse(mode);
     let layer_parsed = if view_mode == ViewMode::All {
         C4Layer::Context
@@ -603,7 +612,7 @@ fn get_scene(mode: &str, layer: Option<&str>, focus: Option<&str>) -> PyResult<S
 #[pyfunction]
 fn render_adrs_html(base_url: &str) -> PyResult<String> {
     let s = state()?;
-    let base = require_base(base_url)?;
+    let base = require_html_base(base_url)?;
     let adrs = s.adr.list_decisions(WS).map_err(map_err)?;
     Ok(adrs_index_html(WS, &base, &adrs))
 }
@@ -611,7 +620,7 @@ fn render_adrs_html(base_url: &str) -> PyResult<String> {
 #[pyfunction]
 fn render_adr_html(adr_id: &str, base_url: &str) -> PyResult<String> {
     let s = state()?;
-    let base = require_base(base_url)?;
+    let base = require_html_base(base_url)?;
     let d = s.adr.get_decision(WS, adr_id).map_err(map_err)?;
     Ok(adr_detail_html(WS, &base, &d))
 }
@@ -737,7 +746,7 @@ fn get_flow_diagram(id: &str, base_url: &str) -> PyResult<String> {
 #[pyfunction]
 fn render_flows_html(base_url: &str) -> PyResult<String> {
     let s = state()?;
-    let base = require_base(base_url)?;
+    let base = require_html_base(base_url)?;
     let flows = s.flows.list_flows(WS).map_err(map_err)?;
     let adrs_n = s.adr.list_decisions(WS).map_err(map_err)?.len();
     Ok(flows_index_html(WS, &base, &flows, adrs_n))
@@ -746,7 +755,7 @@ fn render_flows_html(base_url: &str) -> PyResult<String> {
 #[pyfunction]
 fn render_flow_html(flow_id: &str, base_url: &str) -> PyResult<String> {
     let s = state()?;
-    let base = require_base(base_url)?;
+    let base = require_html_base(base_url)?;
     let f = s.flows.get_flow(WS, flow_id).map_err(map_err)?;
     let elements = s.model.list_elements(WS).map_err(map_err)?;
     let adrs_n = s.adr.list_decisions(WS).map_err(map_err)?.len();
