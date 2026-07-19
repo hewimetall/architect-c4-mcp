@@ -1,23 +1,21 @@
 //! Composition root + thin PyO3 façade (Python stays slim).
 //!
-//! Persist on disk for the product repo: `docs/**/*.toml` only.
-//! SQLite indexes are **in-memory** (never written into the product git tree).
+//! Durable truth: `docs/**/*.toml` only. Runtime index is in-memory HashMap
+//! (loaded on `bind_docs`, write-through on mutate). No SQLite.
 //! Mutations that touch docs go through [`architect_c4_queue::WriteQueue`].
 
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use architect_c4_adr::AdrService;
-use architect_c4_domain::ports::{
-    AdrPort, ElementExistsPort, FlowPort, GitPort, ModelPort, SessionPort,
-};
+use architect_c4_domain::ports::{AdrPort, ElementExistsPort, FlowPort, GitPort, ModelPort};
 use architect_c4_domain::{
     project_relationships, C4Layer, Decision, DecisionStatus, Element, ElementKind, Flow,
     Relationship,
 };
 use architect_c4_flow::FlowService;
 use architect_c4_git::GixGitAdapter;
-use architect_c4_model::SqliteModelStore;
+use architect_c4_model::MemoryModelStore;
 use architect_c4_policy::{blocks_write, check_parent, check_relationship, scan_model};
 use architect_c4_queue::WriteQueue;
 use architect_c4_render::{
@@ -25,12 +23,10 @@ use architect_c4_render::{
     flow_to_mermaid, flows_index_html, normalize_public_base, overview_mermaid,
     scene_json_for_view, view_html, view_links, DiagramInput,
 };
-use architect_c4_revision::SqliteRevisionStore;
 use architect_c4_scene::ViewMode;
-use architect_c4_session::SqliteSessionStore;
 use architect_c4_tomlio::{
     ensure_docs_layout, read_adr_toml, read_flow_toml, read_model_toml, repo_root_from_docs,
-    rewrite_legacy_adrs, rewrite_legacy_flows, write_model_toml, ModelFile,
+    rewrite_legacy_adrs, rewrite_legacy_flows, validate_docs_dir, write_model_toml, ModelFile,
 };
 use architect_c4_validate::{validate_model, ModelSnapshot};
 use parking_lot::Mutex;
@@ -41,12 +37,9 @@ use serde_json::json;
 const WS: &str = "sidecar";
 
 struct AppState {
-    sessions: SqliteSessionStore,
-    model: Arc<SqliteModelStore>,
+    model: Arc<MemoryModelStore>,
     adr: AdrService,
     flows: FlowService,
-    #[allow(dead_code)]
-    revisions: Arc<SqliteRevisionStore>,
     queue: Arc<WriteQueue>,
     /// Absolute docs/ directory bound to the sidecar workspace.
     docs_dir: Mutex<Option<PathBuf>>,
@@ -81,25 +74,20 @@ fn persist_model_toml(s: &AppState) -> Result<(), architect_c4_domain::DomainErr
 
 #[pyfunction]
 fn init(data_dir: &str) -> PyResult<()> {
-    // data_dir kept for API/tests; indexes are in-memory — no *.db in product repo.
+    // data_dir kept for API/tests; runtime is HashMap — no *.db anywhere.
     let root = PathBuf::from(data_dir);
     let _ = std::fs::create_dir_all(&root);
-    let rev = Arc::new(SqliteRevisionStore::open_in_memory().map_err(map_err)?);
-    let sessions = SqliteSessionStore::open_in_memory().map_err(map_err)?;
-    let model = Arc::new(SqliteModelStore::open_in_memory(rev.clone()).map_err(map_err)?);
+    let model = MemoryModelStore::new();
     let git = Arc::new(GixGitAdapter::new());
     let git_port: Arc<dyn GitPort> = git.clone();
     let elements: Arc<dyn ElementExistsPort> = model.clone();
-    let adr = AdrService::open_in_memory(rev.clone(), git_port.clone(), elements.clone())
-        .map_err(map_err)?;
-    let flows = FlowService::open_in_memory(rev.clone(), git_port, elements).map_err(map_err)?;
+    let adr = AdrService::new(git_port.clone(), elements.clone());
+    let flows = FlowService::new(git_port, elements);
     let queue = Arc::new(WriteQueue::start());
     let app = Arc::new(AppState {
-        sessions,
         model,
         adr,
         flows,
-        revisions: rev,
         queue,
         docs_dir: Mutex::new(None),
     });
@@ -117,24 +105,28 @@ fn bind_docs_inner(
     s: &AppState,
     docs_dir: &std::path::Path,
 ) -> Result<serde_json::Value, architect_c4_domain::DomainError> {
-    let docs_dir = docs_dir
-        .canonicalize()
-        .unwrap_or_else(|_| docs_dir.to_path_buf());
-    ensure_docs_layout(&docs_dir).map_err(architect_c4_domain::DomainError::Message)?;
+    validate_docs_dir(docs_dir).map_err(architect_c4_domain::DomainError::Message)?;
+    // Create layout before canonicalize so a fresh path becomes absolute.
+    ensure_docs_layout(docs_dir).map_err(architect_c4_domain::DomainError::Message)?;
+    let docs_dir = docs_dir.canonicalize().map_err(|e| {
+        architect_c4_domain::DomainError::Message(format!(
+            "docs_dir canonicalize failed for {}: {e}",
+            docs_dir.display()
+        ))
+    })?;
     let n_adr =
         rewrite_legacy_adrs(&docs_dir).map_err(architect_c4_domain::DomainError::Message)?;
     let n_flow =
         rewrite_legacy_flows(&docs_dir).map_err(architect_c4_domain::DomainError::Message)?;
     let repo_root = repo_root_from_docs(&docs_dir);
-    // Workspace row (path = repo root for gix commits of docs/…)
-    if s.sessions.get_workspace(WS).is_err() {
-        let _ = s.sessions.create_workspace(
-            WS,
-            "docs-sidecar",
-            "main",
-            &repo_root.to_string_lossy(),
-        )?;
+    let repo_root = repo_root.canonicalize().unwrap_or(repo_root);
+    if repo_root.as_os_str().is_empty() {
+        return Err(architect_c4_domain::DomainError::Message(format!(
+            "cannot derive repo root from docs_dir {}",
+            docs_dir.display()
+        )));
     }
+    // Repo root = worktree for optional gix commits of docs/…
     s.adr.bind_worktree(WS, repo_root.clone());
     s.flows.bind_worktree(WS, repo_root);
     *s.docs_dir.lock() = Some(docs_dir.clone());
@@ -155,7 +147,7 @@ fn bind_docs_inner(
         rel.workspace_id = WS.into();
         let _ = s.model.upsert_relationship(rel)?;
     }
-    // Load ADR/flow toml into SQL index (commit=false — files already on disk)
+    // Load ADR/flow toml into memory index (files already on disk)
     if docs_dir.join("adr").is_dir() {
         for entry in std::fs::read_dir(docs_dir.join("adr"))
             .map_err(|e| architect_c4_domain::DomainError::Message(e.to_string()))?
@@ -183,7 +175,7 @@ fn bind_docs_inner(
             }
             let mut f = read_flow_toml(&path).map_err(architect_c4_domain::DomainError::Message)?;
             f.workspace_id = WS.into();
-            let _ = s.flows.upsert_flow(f, false)?;
+            let _ = s.flows.import_from_disk(f)?;
         }
     }
 
@@ -277,7 +269,7 @@ fn upsert_element(
         .queue
         .submit(move || {
             let saved = s2.model.upsert_element(el)?;
-            let _ = persist_model_toml(&s2);
+            persist_model_toml(&s2)?;
             Ok(serde_json::to_string(&saved).unwrap())
         })
         .map_err(map_err)?;
@@ -323,7 +315,7 @@ fn upsert_relationship(
         .queue
         .submit(move || {
             let saved = s2.model.upsert_relationship(rel)?;
-            let _ = persist_model_toml(&s2);
+            persist_model_toml(&s2)?;
             Ok(serde_json::to_string(&saved).unwrap())
         })
         .map_err(map_err)?;
@@ -339,7 +331,7 @@ fn delete_relationship(id: &str) -> PyResult<String> {
         .queue
         .submit(move || {
             s2.model.delete_relationship(WS, &rid)?;
-            let _ = persist_model_toml(&s2);
+            persist_model_toml(&s2)?;
             Ok(json!({ "deleted": rid }).to_string())
         })
         .map_err(map_err)?;

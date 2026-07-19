@@ -4,12 +4,10 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 publish.workspace = true
-description = "Flow use-cases: rigid JSON in worktree + git commit + SQL index"
+description = "Flow use-cases: TOML on disk + optional git commit + in-memory index"
 
 [dependencies]
 architect-c4-domain = { workspace = true }
-architect-c4-revision = { workspace = true }
-rusqlite = { workspace = true }
 parking_lot = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

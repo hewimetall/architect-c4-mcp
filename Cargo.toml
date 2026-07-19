@@ -2,8 +2,6 @@
 resolver = "2"
 members = [
   "packages/architect-c4-domain",
-  "packages/architect-c4-revision",
-  "packages/architect-c4-session",
   "packages/architect-c4-model",
   "packages/architect-c4-git",
   "packages/architect-c4-adr",
@@ -31,15 +29,12 @@ serde_json = "1"
 toml = "0.8"
 toml_edit = "0.22"
 uuid = { version = "1", features = ["v4"] }
-rusqlite = { version = "0.37", features = ["bundled"] }
 parking_lot = "0.12"
 tempfile = "3"
 gix = { version = "0.73", default-features = false, features = ["max-performance-safe"] }
 gix-date = "0.10"
 pyo3 = { version = "0.29" }
 architect-c4-domain = { path = "packages/architect-c4-domain" }
-architect-c4-revision = { path = "packages/architect-c4-revision" }
-architect-c4-session = { path = "packages/architect-c4-session" }
 architect-c4-model = { path = "packages/architect-c4-model" }
 architect-c4-git = { path = "packages/architect-c4-git" }
 architect-c4-adr = { path = "packages/architect-c4-adr" }

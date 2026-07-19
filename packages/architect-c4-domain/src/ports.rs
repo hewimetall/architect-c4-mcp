@@ -1,54 +1,6 @@
 //! Application ports (hexagonal). Adapters live in sibling crates.
 
-use crate::{
-    ChangeKind, Decision, DomainError, Element, EntityType, Relationship, Revision, Session,
-    Workspace,
-};
-
-/// Append-only revision store (SQL mechanics live in architect-c4-revision).
-pub trait RevisionPort: Send + Sync {
-    fn append(
-        &self,
-        workspace_id: &str,
-        entity_type: EntityType,
-        entity_id: &str,
-        change_kind: ChangeKind,
-        snapshot_json: &str,
-        git_commit_id: Option<&str>,
-    ) -> Result<Revision, DomainError>;
-
-    fn head(
-        &self,
-        workspace_id: &str,
-        entity_type: EntityType,
-        entity_id: &str,
-    ) -> Result<Option<Revision>, DomainError>;
-
-    fn history(
-        &self,
-        workspace_id: &str,
-        entity_type: EntityType,
-        entity_id: &str,
-    ) -> Result<Vec<Revision>, DomainError>;
-}
-
-pub trait SessionPort: Send + Sync {
-    fn create_session(&self, meta: &str) -> Result<Session, DomainError>;
-    fn get_session(&self, id: &str) -> Result<Session, DomainError>;
-    fn list_sessions(&self) -> Result<Vec<Session>, DomainError>;
-    fn close_session(&self, id: &str) -> Result<(), DomainError>;
-    fn create_workspace(
-        &self,
-        id: &str,
-        project_id: &str,
-        ref_name: &str,
-        path: &str,
-    ) -> Result<Workspace, DomainError>;
-    fn get_workspace(&self, id: &str) -> Result<Workspace, DomainError>;
-    fn list_workspaces(&self, project_id: Option<&str>) -> Result<Vec<Workspace>, DomainError>;
-    fn set_active_workspace(&self, session_id: &str, workspace_id: &str)
-        -> Result<(), DomainError>;
-}
+use crate::{Decision, DomainError, Element, Relationship};
 
 /// Lookup whether a C4 element id exists (used by ADR scope checks).
 pub trait ElementExistsPort: Send + Sync {

@@ -116,8 +116,8 @@ context/decision/consequences = GFM (таблицы, код, списки). Бе
 
 | Есть | Нет |
 |------|-----|
-| domain, app, validate, policy, render | SQLite / JSON как SoT в `docs/` |
-| model / adr / flow → TOML + очередь | workspace / bare git / worktree в API |
+| domain, app, validate, policy, render | SQLite / JSON как SoT или runtime-индекс |
+| model / adr / flow → TOML + очередь + HashMap в памяти | workspace / bare git / worktree в API |
 | git — commit на хосте в репо продукта | посторонние заметки в поставке |
 | Mermaid viewer по умолчанию | WASM в базовом образе |
 

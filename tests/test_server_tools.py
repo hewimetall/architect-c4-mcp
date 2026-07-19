@@ -399,6 +399,34 @@ def test_bind_docs_requires_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
         server.bind_docs(None)
 
 
+def test_cli_accepts_glued_docs_flag(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.delenv("ARCHITECT_C4_DOCS", raising=False)
+    server._apply_cli_env(["architect-c4-mcp", "--docs /tmp/glued-docs"])
+    assert os.environ["ARCHITECT_C4_DOCS"].endswith("glued-docs")
+
+
+def test_bind_docs_rejects_windows_path_on_unix(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("ARCHITECT_C4_DATA", str(tmp_path))
+    monkeypatch.delenv("ARCHITECT_C4_DOCS", raising=False)
+    if hasattr(server._ensure_init, "_done"):
+        delattr(server._ensure_init, "_done")
+    native.init(str(tmp_path))
+    server._ensure_init._done = True  # type: ignore[attr-defined]
+    with pytest.raises(ValueError, match="Windows path"):
+        server.bind_docs(r"C:\Users\derty\AppData\Local\Temp\local-architect-smoke-dramatiq")
+
+
+def test_upsert_without_bind_fails_persist(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("ARCHITECT_C4_DATA", str(tmp_path))
+    monkeypatch.delenv("ARCHITECT_C4_DOCS", raising=False)
+    if hasattr(server._ensure_init, "_done"):
+        delattr(server._ensure_init, "_done")
+    native.init(str(tmp_path))
+    server._ensure_init._done = True  # type: ignore[attr-defined]
+    with pytest.raises(ValueError, match="no docs bind"):
+        server.upsert_element("x", "person", "X", description="d")
+
+
 def test_prompts_registered():
     import asyncio
 
@@ -531,3 +559,30 @@ def test_rebind_clears_stale_model(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     server.bind_docs(str(b))
     ids = {e["id"] for e in server.get_model()["elements"]}
     assert "only-in-a" not in ids
+
+
+def test_reinit_reloads_model_from_toml(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """FS is SoT: fresh init + bind_docs must restore upserted elements from model.toml."""
+    monkeypatch.setenv("ARCHITECT_C4_DATA", str(tmp_path / "data"))
+    monkeypatch.delenv("ARCHITECT_C4_DOCS", raising=False)
+    if hasattr(server._ensure_init, "_done"):
+        delattr(server._ensure_init, "_done")
+    product = tmp_path / "product"
+    docs = product / "docs"
+    docs.mkdir(parents=True)
+    _git_init(product)
+    native.init(str(tmp_path / "data"))
+    server._ensure_init._done = True  # type: ignore[attr-defined]
+    server.bind_docs(str(docs))
+    server.upsert_element("sys", "software_system", "Sys", description="persisted")
+    assert (docs / "model.toml").is_file()
+    raw = (docs / "model.toml").read_text(encoding="utf-8")
+    assert "sys" in raw
+
+    # Simulate process restart: new native.init clears HashMap, bind reloads TOML.
+    native.init(str(tmp_path / "data2"))
+    server.bind_docs(str(docs))
+    ids = {e["id"] for e in server.get_model()["elements"]}
+    assert "sys" in ids
+    el = next(e for e in server.get_model()["elements"] if e["id"] == "sys")
+    assert el["name"] == "Sys"

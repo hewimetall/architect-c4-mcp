@@ -1,8 +1,8 @@
 """Slim FastMCP server: tools delegate to Rust composition root.
 
 Sidecar: mount product ``docs/`` via ``--docs`` / ``ARCHITECT_C4_DOCS``.
-Persist = TOML only. Writes go through an in-process Rust queue.
-SQLite indexes stay in-memory.
+Persist = TOML only. Runtime index = in-memory HashMap (no SQLite).
+Writes go through an in-process Rust queue.
 """
 
 from __future__ import annotations
@@ -61,7 +61,21 @@ def _apply_cli_env(argv: list[str] | None = None) -> argparse.Namespace:
         metavar="URL",
         help="HTTPS base for viewer links (ARCHITECT_C4_PUBLIC_BASE)",
     )
-    args, rest = parser.parse_known_args(argv)
+    raw = list(sys.argv[1:] if argv is None else argv)
+    # Tolerate Cursor mcp.json mistake: one token "--docs /path" instead of two.
+    fixed: list[str] = []
+    for a in raw:
+        if a.startswith("--docs=") or a.startswith("-d="):
+            fixed.append("--docs")
+            fixed.append(a.split("=", 1)[1])
+        elif a.startswith("--docs ") or a.startswith("-d "):
+            flag, _, path = a.partition(" ")
+            fixed.append("--docs" if flag.startswith("--") else "-d")
+            fixed.append(path.strip())
+        else:
+            fixed.append(a)
+
+    args, rest = parser.parse_known_args(fixed)
     if argv is None:
         sys.argv = [sys.argv[0], *rest]
 
@@ -79,7 +93,7 @@ def _apply_cli_env(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def _ensure_init() -> None:
-    # Ephemeral sidecar state dir (NOT the product repo). Indexes are in-memory.
+    # Ephemeral sidecar state dir (NOT the product repo). Runtime is HashMap-only.
     data = os.environ.get("ARCHITECT_C4_DATA", os.path.join(os.getcwd(), ".data"))
     if not getattr(_ensure_init, "_done", False):
         native.init(data)

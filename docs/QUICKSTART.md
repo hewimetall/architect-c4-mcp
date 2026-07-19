@@ -48,13 +48,18 @@ docs/flows/*.toml
       "command": "uvx",
       "args": [
         "architect-c4-mcp",
-        "--docs", "/ABS/product/docs",
-        "--public-base", "https://c4.example.com"
+        "--docs",
+        "/ABS/product/docs",
+        "--public-base",
+        "https://c4.example.com"
       ]
     }
   }
 }
 ```
+
+Важно: `"--docs"` и путь — **два отдельных** элемента `args` (не `"--docs /path"` одной строкой).  
+В WSL путь должен быть Unix (`/home/…/docs` или `/mnt/c/…/docs`), не `C:\…`.
 
 Пакет: https://pypi.org/project/architect-c4-mcp/
 

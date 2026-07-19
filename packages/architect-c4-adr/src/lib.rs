@@ -1,189 +1,37 @@
-//! ADR use-cases: rigid JSON in worktree + git commit fixation + SQL index/revisions.
+//! ADR use-cases: TOML on disk + optional git commit + in-memory index.
 
+use std::collections::HashMap;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 
-use architect_c4_domain::ports::{AdrPort, ElementExistsPort, GitPort, RevisionPort};
+use architect_c4_domain::ports::{AdrPort, ElementExistsPort, GitPort};
 use architect_c4_domain::{
-    validate_doc_refs, AdrForbidRule, ChangeKind, Decision, DecisionStatus, DomainError, EntityType,
+    validate_doc_refs, AdrForbidRule, Decision, DecisionStatus, DomainError,
 };
-use architect_c4_revision::SqliteRevisionStore;
 use parking_lot::Mutex;
-use rusqlite::{params, Connection, OptionalExtension};
+
+type Key = (String, String);
 
 pub struct AdrService {
-    conn: Arc<Mutex<Connection>>,
-    revisions: Arc<SqliteRevisionStore>,
+    decisions: Mutex<HashMap<Key, Decision>>,
     git: Arc<dyn GitPort>,
     elements: Arc<dyn ElementExistsPort>,
-    worktrees: Mutex<std::collections::HashMap<String, PathBuf>>,
+    worktrees: Mutex<HashMap<String, PathBuf>>,
 }
 
 impl AdrService {
-    pub fn open(
-        path: &Path,
-        revisions: Arc<SqliteRevisionStore>,
-        git: Arc<dyn GitPort>,
-        elements: Arc<dyn ElementExistsPort>,
-    ) -> Result<Self, DomainError> {
-        let conn = Connection::open(path).map_err(map_sql)?;
-        let s = Self {
-            conn: Arc::new(Mutex::new(conn)),
-            revisions,
+    pub fn new(git: Arc<dyn GitPort>, elements: Arc<dyn ElementExistsPort>) -> Self {
+        Self {
+            decisions: Mutex::new(HashMap::new()),
             git,
             elements,
-            worktrees: Mutex::new(std::collections::HashMap::new()),
-        };
-        s.migrate()?;
-        Ok(s)
-    }
-
-    pub fn open_in_memory(
-        revisions: Arc<SqliteRevisionStore>,
-        git: Arc<dyn GitPort>,
-        elements: Arc<dyn ElementExistsPort>,
-    ) -> Result<Self, DomainError> {
-        let conn = Connection::open_in_memory().map_err(map_sql)?;
-        let s = Self {
-            conn: Arc::new(Mutex::new(conn)),
-            revisions,
-            git,
-            elements,
-            worktrees: Mutex::new(std::collections::HashMap::new()),
-        };
-        s.migrate()?;
-        Ok(s)
+            worktrees: Mutex::new(HashMap::new()),
+        }
     }
 
     pub fn bind_worktree(&self, workspace_id: &str, path: PathBuf) {
         self.worktrees.lock().insert(workspace_id.to_string(), path);
-    }
-
-    pub fn migrate(&self) -> Result<(), DomainError> {
-        let conn = self.conn.lock();
-        conn.execute_batch(
-            r#"
-                CREATE TABLE IF NOT EXISTS decisions (
-                  id TEXT NOT NULL,
-                  workspace_id TEXT NOT NULL,
-                  scope_element_id TEXT,
-                  title TEXT NOT NULL,
-                  status TEXT NOT NULL,
-                  decided_at TEXT NOT NULL,
-                  body_json TEXT NOT NULL,
-                  path TEXT NOT NULL,
-                  git_commit_id TEXT,
-                  PRIMARY KEY (workspace_id, id)
-                );
-                "#,
-        )
-        .map_err(map_sql)?;
-
-        // v0.1 → v0.2: content_md → body_json (rigid ADR JSON).
-        let cols: Vec<String> = {
-            let mut stmt = conn
-                .prepare("PRAGMA table_info(decisions)")
-                .map_err(map_sql)?;
-            let rows = stmt
-                .query_map([], |r| r.get::<_, String>(1))
-                .map_err(map_sql)?;
-            let mut out = Vec::new();
-            for r in rows {
-                out.push(r.map_err(map_sql)?);
-            }
-            out
-        };
-        if cols.iter().any(|c| c == "content_md") && !cols.iter().any(|c| c == "body_json") {
-            conn.execute_batch(
-                r#"
-                ALTER TABLE decisions RENAME TO decisions_legacy_v1;
-                CREATE TABLE decisions (
-                  id TEXT NOT NULL,
-                  workspace_id TEXT NOT NULL,
-                  scope_element_id TEXT,
-                  title TEXT NOT NULL,
-                  status TEXT NOT NULL,
-                  decided_at TEXT NOT NULL,
-                  body_json TEXT NOT NULL,
-                  path TEXT NOT NULL,
-                  git_commit_id TEXT,
-                  PRIMARY KEY (workspace_id, id)
-                );
-                "#,
-            )
-            .map_err(map_sql)?;
-            let mut stmt = conn
-                .prepare(
-                    "SELECT id, workspace_id, scope_element_id, title, status, decided_at, content_md, path, git_commit_id FROM decisions_legacy_v1",
-                )
-                .map_err(map_sql)?;
-            let legacy = stmt
-                .query_map([], |r| {
-                    Ok((
-                        r.get::<_, String>(0)?,
-                        r.get::<_, String>(1)?,
-                        r.get::<_, Option<String>>(2)?,
-                        r.get::<_, String>(3)?,
-                        r.get::<_, String>(4)?,
-                        r.get::<_, String>(5)?,
-                        r.get::<_, String>(6)?,
-                        r.get::<_, String>(7)?,
-                        r.get::<_, Option<String>>(8)?,
-                    ))
-                })
-                .map_err(map_sql)?;
-            for row in legacy {
-                let (id, ws, scope, title, status, decided_at, content_md, path, git) =
-                    row.map_err(map_sql)?;
-                let status_parsed =
-                    DecisionStatus::parse(&status).unwrap_or(DecisionStatus::Proposed);
-                let d = Decision {
-                    id: id.clone(),
-                    workspace_id: ws.clone(),
-                    scope_element_id: scope.clone(),
-                    title: title.clone(),
-                    status: status_parsed,
-                    decided_at: decided_at.clone(),
-                    context: "Migrated from markdown ADR.".into(),
-                    decision: if content_md.trim().is_empty() {
-                        title.clone()
-                    } else {
-                        content_md.clone()
-                    },
-                    consequences: "See git history for prior markdown body.".into(),
-                    policy: None,
-                    related_flows: vec![],
-                    refs: vec![],
-                    reason: None,
-                    superseded_by_id: None,
-                    path: path.replace(".md", ".toml").replace(".json", ".toml"),
-                    git_commit_id: git.clone(),
-                };
-                let body =
-                    serde_json::to_string(&d).map_err(|e| DomainError::Message(e.to_string()))?;
-                conn.execute(
-                    r#"INSERT INTO decisions
-                       (id, workspace_id, scope_element_id, title, status, decided_at, body_json, path, git_commit_id)
-                       VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)"#,
-                    params![
-                        d.id,
-                        d.workspace_id,
-                        d.scope_element_id,
-                        d.title,
-                        d.status.as_str(),
-                        d.decided_at,
-                        body,
-                        d.path,
-                        d.git_commit_id,
-                    ],
-                )
-                .map_err(map_sql)?;
-            }
-            conn.execute_batch("DROP TABLE decisions_legacy_v1;")
-                .map_err(map_sql)?;
-        }
-        Ok(())
     }
 
     fn worktree(&self, workspace_id: &str) -> Result<PathBuf, DomainError> {
@@ -304,18 +152,6 @@ impl AdrService {
         }
         architect_c4_tomlio::write_adr_toml(&abs, &decision).map_err(DomainError::Message)?;
 
-        let exists = self
-            .conn
-            .lock()
-            .query_row(
-                "SELECT 1 FROM decisions WHERE workspace_id=?1 AND id=?2",
-                params![decision.workspace_id, decision.id],
-                |_| Ok(true),
-            )
-            .optional()
-            .map_err(map_sql)?
-            .unwrap_or(false);
-
         let git_commit_id = if commit {
             Some(self.git.commit(
                 &wt,
@@ -326,48 +162,28 @@ impl AdrService {
             None
         };
         decision.git_commit_id = git_commit_id.clone();
-        let body =
-            serde_json::to_string(&decision).map_err(|e| DomainError::Message(e.to_string()))?;
-
-        {
-            let conn = self.conn.lock();
-            conn.execute(
-                r#"INSERT INTO decisions
-                   (id, workspace_id, scope_element_id, title, status, decided_at, body_json, path, git_commit_id)
-                   VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)
-                   ON CONFLICT(workspace_id, id) DO UPDATE SET
-                     scope_element_id=excluded.scope_element_id, title=excluded.title,
-                     status=excluded.status, decided_at=excluded.decided_at,
-                     body_json=excluded.body_json, path=excluded.path,
-                     git_commit_id=excluded.git_commit_id"#,
-                params![
-                    decision.id,
-                    decision.workspace_id,
-                    decision.scope_element_id,
-                    decision.title,
-                    decision.status.as_str(),
-                    decision.decided_at,
-                    body,
-                    decision.path,
-                    decision.git_commit_id,
-                ],
-            )
-            .map_err(map_sql)?;
-        }
-
-        self.revisions.append(
-            &decision.workspace_id,
-            EntityType::Decision,
-            &decision.id,
-            if exists {
-                ChangeKind::Update
-            } else {
-                ChangeKind::Create
-            },
-            &body,
-            git_commit_id.as_deref(),
-        )?;
+        let key = (decision.workspace_id.clone(), decision.id.clone());
+        self.decisions.lock().insert(key, decision.clone());
         Ok((decision, git_commit_id))
+    }
+
+    /// Load ADR already on disk into the in-memory index (no rewrite, no commit).
+    pub fn import_from_disk(
+        &self,
+        decision: Decision,
+    ) -> Result<(Decision, Option<String>), DomainError> {
+        Self::validate_document(&decision, false)?;
+        let key = (decision.workspace_id.clone(), decision.id.clone());
+        self.decisions.lock().insert(key, decision.clone());
+        Ok((decision, None))
+    }
+
+    /// Drop in-memory ADR index for a workspace (sidecar rebind). Does not touch disk.
+    pub fn clear_workspace(&self, workspace_id: &str) -> Result<(), DomainError> {
+        self.decisions
+            .lock()
+            .retain(|(ws, _), _| ws != workspace_id);
+        Ok(())
     }
 }
 
@@ -402,37 +218,12 @@ fn validate_forbid_rule(rule: &AdrForbidRule) -> Result<(), DomainError> {
     Ok(())
 }
 
-impl AdrService {
-    /// Load ADR already on disk into the in-memory index (no agent status gate).
-    pub fn import_from_disk(
-        &self,
-        decision: Decision,
-    ) -> Result<(Decision, Option<String>), DomainError> {
-        Self::validate_document(&decision, false)?;
-        self.persist(decision, false)
-    }
-
-    /// Drop in-memory ADR index for a workspace (sidecar rebind). Does not touch disk.
-    pub fn clear_workspace(&self, workspace_id: &str) -> Result<(), DomainError> {
-        self.conn
-            .lock()
-            .execute(
-                "DELETE FROM decisions WHERE workspace_id=?1",
-                params![workspace_id],
-            )
-            .map_err(map_sql)?;
-        Ok(())
-    }
-}
-
 impl AdrPort for AdrService {
     fn upsert_decision(
         &self,
         decision: Decision,
         commit: bool,
     ) -> Result<(Decision, Option<String>), DomainError> {
-        // Create / draft|proposed → agent rules.
-        // Refresh of same process status (accepted/…) → allow (e.g. update refs/related_flows).
         let agent_rules = match self.get_decision(&decision.workspace_id, &decision.id) {
             Ok(existing) if !existing.status.agent_writable() => {
                 if decision.status != existing.status {
@@ -499,39 +290,24 @@ impl AdrPort for AdrService {
     }
 
     fn get_decision(&self, workspace_id: &str, id: &str) -> Result<Decision, DomainError> {
-        let body: String = self
-            .conn
+        self.decisions
             .lock()
-            .query_row(
-                "SELECT body_json FROM decisions WHERE workspace_id=?1 AND id=?2",
-                params![workspace_id, id],
-                |r| r.get(0),
-            )
-            .optional()
-            .map_err(map_sql)?
-            .ok_or_else(|| DomainError::NotFound(format!("decision {id}")))?;
-        serde_json::from_str(&body).map_err(|e| DomainError::Message(e.to_string()))
+            .get(&(workspace_id.to_string(), id.to_string()))
+            .cloned()
+            .ok_or_else(|| DomainError::NotFound(format!("decision {id}")))
     }
 
     fn list_decisions(&self, workspace_id: &str) -> Result<Vec<Decision>, DomainError> {
-        let conn = self.conn.lock();
-        let mut stmt = conn
-            .prepare("SELECT body_json FROM decisions WHERE workspace_id=?1 ORDER BY id")
-            .map_err(map_sql)?;
-        let rows = stmt
-            .query_map(params![workspace_id], |r| r.get::<_, String>(0))
-            .map_err(map_sql)?;
-        let mut out = Vec::new();
-        for r in rows {
-            let body = r.map_err(map_sql)?;
-            out.push(serde_json::from_str(&body).map_err(|e| DomainError::Message(e.to_string()))?);
-        }
+        let mut out: Vec<_> = self
+            .decisions
+            .lock()
+            .values()
+            .filter(|d| d.workspace_id == workspace_id)
+            .cloned()
+            .collect();
+        out.sort_by(|a, b| a.id.cmp(&b.id));
         Ok(out)
     }
-}
-
-fn map_sql(e: rusqlite::Error) -> DomainError {
-    DomainError::Message(e.to_string())
 }
 
 #[cfg(test)]
@@ -562,15 +338,15 @@ mod tests {
 
     fn sample(status: DecisionStatus) -> Decision {
         Decision {
-            id: "0001-use-sqlite".into(),
+            id: "0001-use-toml".into(),
             workspace_id: "w".into(),
             scope_element_id: Some("billing".into()),
-            title: "Use SQLite".into(),
+            title: "Use TOML on disk".into(),
             status,
             decided_at: "2026-07-16".into(),
-            context: "Need embedded store.".into(),
-            decision: "Use SQLite for ADR index.".into(),
-            consequences: "Ops must backup .db files.".into(),
+            context: "Need durable architecture docs.".into(),
+            decision: "Store ADR as TOML under docs/adr/.".into(),
+            consequences: "Git history is the audit trail.".into(),
             policy: None,
             related_flows: vec![],
             refs: vec![],
@@ -581,22 +357,21 @@ mod tests {
         }
     }
 
-    fn setup() -> (tempfile::TempDir, AdrService, Arc<SqliteRevisionStore>) {
+    fn setup() -> (tempfile::TempDir, AdrService) {
         let dir = tempdir().unwrap();
         let git = Arc::new(GixGitAdapter::new());
         let bare = git.init_bare(&dir.path().join("p.git")).unwrap();
         let wt = git
             .add_worktree(&bare, &dir.path().join("wt"), "main")
             .unwrap();
-        let rev = Arc::new(SqliteRevisionStore::open_in_memory().unwrap());
-        let adr = AdrService::open_in_memory(rev.clone(), git, allow(&["billing"])).unwrap();
+        let adr = AdrService::new(git, allow(&["billing"]));
         adr.bind_worktree("w", wt);
-        (dir, adr, rev)
+        (dir, adr)
     }
 
     #[test]
-    fn upsert_writes_toml_commits_and_revision() {
-        let (_dir, adr, rev) = setup();
+    fn upsert_writes_toml_and_commits() {
+        let (_dir, adr) = setup();
         let (d, cid) = adr
             .upsert_decision(sample(DecisionStatus::Proposed), true)
             .unwrap();
@@ -606,16 +381,12 @@ mod tests {
         let raw = fs::read_to_string(wt.join(&d.path)).unwrap();
         assert!(raw.contains("context = '''") || raw.contains("context ="));
         assert!(!raw.contains("content_md"));
-        let h = rev
-            .head("w", EntityType::Decision, "0001-use-sqlite")
-            .unwrap()
-            .unwrap();
-        assert_eq!(h.git_commit_id, cid);
+        assert_eq!(d.git_commit_id, cid);
     }
 
     #[test]
     fn agent_cannot_upsert_accepted_status() {
-        let (_dir, adr, _) = setup();
+        let (_dir, adr) = setup();
         let err = adr
             .upsert_decision(sample(DecisionStatus::Accepted), false)
             .unwrap_err();
@@ -624,13 +395,13 @@ mod tests {
 
     #[test]
     fn process_reject_requires_reason() {
-        let (_dir, adr, _) = setup();
+        let (_dir, adr) = setup();
         adr.upsert_decision(sample(DecisionStatus::Proposed), false)
             .unwrap();
         let err = adr
             .set_decision_status(
                 "w",
-                "0001-use-sqlite",
+                "0001-use-toml",
                 DecisionStatus::Rejected,
                 None,
                 None,
@@ -641,7 +412,7 @@ mod tests {
         let (d, _) = adr
             .set_decision_status(
                 "w",
-                "0001-use-sqlite",
+                "0001-use-toml",
                 DecisionStatus::Rejected,
                 Some("Not durable enough"),
                 None,
@@ -654,12 +425,12 @@ mod tests {
 
     #[test]
     fn process_accept_then_agent_cannot_edit() {
-        let (_dir, adr, _) = setup();
+        let (_dir, adr) = setup();
         adr.upsert_decision(sample(DecisionStatus::Draft), false)
             .unwrap();
         adr.set_decision_status(
             "w",
-            "0001-use-sqlite",
+            "0001-use-toml",
             DecisionStatus::Accepted,
             None,
             None,
@@ -674,7 +445,7 @@ mod tests {
 
     #[test]
     fn rejects_missing_scope_element() {
-        let (_dir, adr, _) = setup();
+        let (_dir, adr) = setup();
         let mut d = sample(DecisionStatus::Proposed);
         d.scope_element_id = Some("sys".into());
         let err = adr.upsert_decision(d, true).unwrap_err();
@@ -683,7 +454,7 @@ mod tests {
 
     #[test]
     fn policy_forbid_validated() {
-        let (_dir, adr, _) = setup();
+        let (_dir, adr) = setup();
         let mut d = sample(DecisionStatus::Draft);
         d.policy = Some(AdrPolicy {
             mode: PolicyMode::Enforce,
@@ -700,7 +471,7 @@ mod tests {
 
     #[test]
     fn rejects_bad_date_and_empty_context() {
-        let (_dir, adr, _) = setup();
+        let (_dir, adr) = setup();
         let mut d = sample(DecisionStatus::Draft);
         d.decided_at = "16-07-2026".into();
         assert!(adr.upsert_decision(d.clone(), false).is_err());
@@ -711,7 +482,7 @@ mod tests {
 
     #[test]
     fn rejects_bad_id_and_forbid_code() {
-        let (_dir, adr, _) = setup();
+        let (_dir, adr) = setup();
         let mut d = sample(DecisionStatus::Draft);
         d.id = "-bad".into();
         assert!(adr.upsert_decision(d.clone(), false).is_err());
@@ -731,13 +502,13 @@ mod tests {
 
     #[test]
     fn superseded_requires_id() {
-        let (_dir, adr, _) = setup();
+        let (_dir, adr) = setup();
         adr.upsert_decision(sample(DecisionStatus::Proposed), false)
             .unwrap();
         let err = adr
             .set_decision_status(
                 "w",
-                "0001-use-sqlite",
+                "0001-use-toml",
                 DecisionStatus::Superseded,
                 None,
                 None,
@@ -748,7 +519,7 @@ mod tests {
         let (d, _) = adr
             .set_decision_status(
                 "w",
-                "0001-use-sqlite",
+                "0001-use-toml",
                 DecisionStatus::Superseded,
                 None,
                 Some("0002-next"),
@@ -760,7 +531,7 @@ mod tests {
 
     #[test]
     fn list_and_get_roundtrip() {
-        let (_dir, adr, _) = setup();
+        let (_dir, adr) = setup();
         adr.upsert_decision(sample(DecisionStatus::Draft), false)
             .unwrap();
         let mut d2 = sample(DecisionStatus::Draft);
@@ -770,19 +541,19 @@ mod tests {
         assert_eq!(adr.list_decisions("w").unwrap().len(), 2);
         assert_eq!(
             adr.get_decision("w", "0002-other").unwrap().title,
-            "Use SQLite"
+            "Use TOML on disk"
         );
     }
 
     #[test]
     fn set_status_rejects_agent_statuses() {
-        let (_dir, adr, _) = setup();
+        let (_dir, adr) = setup();
         adr.upsert_decision(sample(DecisionStatus::Draft), false)
             .unwrap();
         let err = adr
             .set_decision_status(
                 "w",
-                "0001-use-sqlite",
+                "0001-use-toml",
                 DecisionStatus::Proposed,
                 None,
                 None,
@@ -793,48 +564,8 @@ mod tests {
     }
 
     #[test]
-    fn migrates_legacy_content_md_table() {
-        let dir = tempdir().unwrap();
-        let db = dir.path().join("legacy.db");
-        {
-            let conn = Connection::open(&db).unwrap();
-            conn.execute_batch(
-                r#"
-                CREATE TABLE decisions (
-                  id TEXT NOT NULL,
-                  workspace_id TEXT NOT NULL,
-                  scope_element_id TEXT,
-                  title TEXT NOT NULL,
-                  status TEXT NOT NULL,
-                  decided_at TEXT NOT NULL,
-                  content_md TEXT NOT NULL,
-                  path TEXT NOT NULL,
-                  git_commit_id TEXT,
-                  PRIMARY KEY (workspace_id, id)
-                );
-                INSERT INTO decisions VALUES
-                  ('1','w',NULL,'Old','accepted','2026-07-01','## Decision\nlegacy','docs/adr/1.md',NULL);
-                "#,
-            )
-            .unwrap();
-        }
-        let git = Arc::new(GixGitAdapter::new());
-        let bare = git.init_bare(&dir.path().join("p.git")).unwrap();
-        let wt = git
-            .add_worktree(&bare, &dir.path().join("wt"), "main")
-            .unwrap();
-        let rev = Arc::new(SqliteRevisionStore::open_in_memory().unwrap());
-        let adr = AdrService::open(&db, rev, git, allow(&[])).unwrap();
-        adr.bind_worktree("w", wt);
-        let d = adr.get_decision("w", "1").unwrap();
-        assert_eq!(d.title, "Old");
-        assert!(d.decision.contains("legacy"));
-        assert!(d.path.ends_with(".toml"));
-    }
-
-    #[test]
     fn clear_workspace_and_import_from_disk() {
-        let (_dir, adr, _) = setup();
+        let (_dir, adr) = setup();
         adr.upsert_decision(sample(DecisionStatus::Draft), false)
             .unwrap();
         assert_eq!(adr.list_decisions("w").unwrap().len(), 1);
@@ -847,14 +578,14 @@ mod tests {
         assert_eq!(d.status, DecisionStatus::Accepted);
         assert!(cid.is_none());
         assert_eq!(
-            adr.get_decision("w", "0001-use-sqlite").unwrap().title,
-            "Use SQLite"
+            adr.get_decision("w", "0001-use-toml").unwrap().title,
+            "Use TOML on disk"
         );
     }
 
     #[test]
     fn validate_document_edge_cases() {
-        let (_dir, adr, _) = setup();
+        let (_dir, adr) = setup();
         let mut d = sample(DecisionStatus::Draft);
         d.workspace_id.clear();
         assert!(adr.upsert_decision(d.clone(), false).is_err());
@@ -896,7 +627,7 @@ mod tests {
         let err = adr
             .set_decision_status(
                 "w",
-                "0001-use-sqlite",
+                "0001-use-toml",
                 DecisionStatus::Rejected,
                 Some(&"x".repeat(2001)),
                 None,
@@ -910,12 +641,12 @@ mod tests {
 
     #[test]
     fn accepted_refresh_keeps_status_without_agent_gate() {
-        let (_dir, adr, _) = setup();
+        let (_dir, adr) = setup();
         adr.upsert_decision(sample(DecisionStatus::Proposed), false)
             .unwrap();
         adr.set_decision_status(
             "w",
-            "0001-use-sqlite",
+            "0001-use-toml",
             DecisionStatus::Accepted,
             None,
             None,

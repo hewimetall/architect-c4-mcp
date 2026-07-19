@@ -184,11 +184,44 @@ pub fn ensure_docs_layout(docs_dir: &Path) -> Result<(), String> {
     Ok(())
 }
 
+/// Repo root for git commits = parent of `docs/`.
+///
+/// On Unix, a Windows path like `C:\Users\…\docs` is a *single* path component,
+/// so [`Path::parent`] is `Some("")` — never treat that as a valid root.
 pub fn repo_root_from_docs(docs_dir: &Path) -> PathBuf {
-    docs_dir
-        .parent()
-        .map(Path::to_path_buf)
-        .unwrap_or_else(|| docs_dir.to_path_buf())
+    match docs_dir.parent() {
+        Some(p) if !p.as_os_str().is_empty() => p.to_path_buf(),
+        _ => docs_dir
+            .canonicalize()
+            .ok()
+            .and_then(|abs| {
+                abs.parent()
+                    .filter(|p| !p.as_os_str().is_empty())
+                    .map(Path::to_path_buf)
+            })
+            .unwrap_or_else(|| PathBuf::from(".")),
+    }
+}
+
+/// Reject host paths that cannot work in this process (e.g. `C:\…` inside WSL/Linux).
+pub fn validate_docs_dir(docs_dir: &Path) -> Result<(), String> {
+    let s = docs_dir.to_string_lossy();
+    if s.trim().is_empty() {
+        return Err("docs_dir is empty".into());
+    }
+    #[cfg(unix)]
+    {
+        // Backslash Windows path, or `C:/…` drive form not under /mnt.
+        let looks_win_drive =
+            s.len() >= 2 && s.as_bytes()[0].is_ascii_alphabetic() && s.as_bytes()[1] == b':';
+        if s.contains('\\') || looks_win_drive {
+            return Err(format!(
+                "docs_dir looks like a Windows path ({s}). Inside WSL/Linux use a Unix path \
+                 (e.g. /tmp/…/docs or /mnt/c/Users/…/docs), not C:\\…"
+            ));
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -245,6 +278,23 @@ mod tests {
         assert_eq!(rewrite_legacy_adrs(&docs).unwrap(), 1);
         assert!(!json_path.exists());
         assert!(docs.join("adr/x.toml").is_file());
+    }
+
+    #[test]
+    fn repo_root_rejects_empty_parent_from_windows_style_component() {
+        // On Unix a backslash path is one component → parent is "".
+        let win = PathBuf::from(r"C:\Users\derty\AppData\Local\Temp\docs");
+        let root = repo_root_from_docs(&win);
+        assert!(
+            !root.as_os_str().is_empty(),
+            "repo root must not be empty string"
+        );
+        assert!(validate_docs_dir(&win).is_err());
+        assert!(validate_docs_dir(Path::new("")).is_err());
+        let ok = tempdir().unwrap().path().join("docs");
+        fs::create_dir_all(&ok).unwrap();
+        assert!(validate_docs_dir(&ok).is_ok());
+        assert_eq!(repo_root_from_docs(&ok), ok.parent().unwrap());
     }
 
     #[test]
