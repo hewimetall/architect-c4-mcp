@@ -23,9 +23,7 @@ from architect_c4.prompts import register_prompts
 mcp = FastMCP("architect-c4")
 register_prompts(mcp)
 
-DEFAULT_PUBLIC_BASE = os.environ.get(
-    "ARCHITECT_C4_PUBLIC_BASE", "https://c4.example.com"
-)
+DEFAULT_PUBLIC_BASE = os.environ.get("ARCHITECT_C4_PUBLIC_BASE", "https://c4.example.com")
 
 
 def _apply_cli_env(argv: list[str] | None = None) -> argparse.Namespace:
@@ -43,12 +41,6 @@ def _apply_cli_env(argv: list[str] | None = None) -> argparse.Namespace:
         "-d",
         metavar="DIR",
         help="Absolute path to product docs/ (sets ARCHITECT_C4_DOCS)",
-    )
-    parser.add_argument(
-        "--workspace-id",
-        "-w",
-        metavar="ID",
-        help="Workspace id for auto-bind (default: env or 'default')",
     )
     parser.add_argument(
         "--transport",
@@ -75,8 +67,6 @@ def _apply_cli_env(argv: list[str] | None = None) -> argparse.Namespace:
 
     if args.docs:
         os.environ["ARCHITECT_C4_DOCS"] = os.path.abspath(args.docs)
-    if args.workspace_id:
-        os.environ["ARCHITECT_C4_WORKSPACE_ID"] = args.workspace_id
     if args.transport:
         os.environ["ARCHITECT_C4_TRANSPORT"] = args.transport
     if args.host:
@@ -117,64 +107,8 @@ def _base_url(explicit: str | None = None) -> str:
 
 
 @mcp.tool()
-def list_sessions() -> dict:
-    """List architecture sessions."""
-    _ensure_init()
-    return {"sessions": _j(native.list_sessions())}
-
-
-@mcp.tool()
-def list_workspaces() -> dict:
-    """List active workspaces (projects) with counts and viewer links."""
-    _ensure_init()
-    base = _base_url(None)
-    rows = _j(native.list_workspaces())
-    for r in rows:
-        wid = r.get("id")
-        if wid:
-            r["view_url"] = f"{base}/view/{wid}?mode=all&renderer=wasm"
-            r["index_url"] = f"{base}/view/"
-    return {"workspaces": rows, "view_index": f"{base}/view/"}
-
-
-@mcp.tool()
-def create_session(meta: str = "") -> dict:
-    """Create a new architecture session."""
-    _ensure_init()
-    return _j(native.create_session(meta))
-
-
-@mcp.tool()
-def get_session(session_id: str) -> dict:
-    """Get session by id."""
-    _ensure_init()
-    return _j(native.get_session(session_id))
-
-
-@mcp.tool()
-def create_project(project_id: str) -> dict:
-    """Init bare git project for C4/ADR worktrees."""
-    _ensure_init()
-    return _j(native.create_project(project_id))
-
-
-@mcp.tool()
-def checkout_workspace(
-    session_id: str,
-    project_id: str,
-    ref_name: str = "main",
-    workspace_id: str | None = None,
-) -> dict:
-    """Legacy: create worktree under sidecar DATA. Prefer ``bind_docs`` for sidecar."""
-    _ensure_init()
-    return _j(
-        native.checkout_workspace(session_id, project_id, ref_name, workspace_id)
-    )
-
-
-@mcp.tool()
-def bind_docs(workspace_id: str, docs_dir: str | None = None) -> dict:
-    """Bind workspace to a host ``docs/`` directory (sidecar happy path).
+def bind_docs(docs_dir: str | None = None) -> dict:
+    """Bind to a host ``docs/`` directory (sidecar happy path).
 
     Rewrites legacy ``*.json`` ADR/Flow → ``*.toml``. Loads ``model.toml``.
     Env default: ``ARCHITECT_C4_DOCS``.
@@ -183,12 +117,11 @@ def bind_docs(workspace_id: str, docs_dir: str | None = None) -> dict:
     path = (docs_dir or os.environ.get("ARCHITECT_C4_DOCS") or "").strip()
     if not path:
         raise ValueError("docs_dir required (or set ARCHITECT_C4_DOCS)")
-    return _j(native.bind_docs(workspace_id, path))
+    return _j(native.bind_docs(path))
 
 
 @mcp.tool()
 def upsert_element(
-    workspace_id: str,
     id: str,
     kind: str,
     name: str,
@@ -212,7 +145,6 @@ def upsert_element(
     members_json = None if members is None else _json.dumps(members)
     return _j(
         native.upsert_element(
-            workspace_id,
             id,
             kind,
             name,
@@ -227,7 +159,6 @@ def upsert_element(
 
 @mcp.tool()
 def upsert_relationship(
-    workspace_id: str,
     id: str,
     from_id: str,
     to_id: str,
@@ -239,34 +170,32 @@ def upsert_relationship(
     Shell endpoints rejected unless ARCHITECT_C4_ATOM_EDGES=0 (legacy).
     """
     _ensure_init()
-    return _j(
-        native.upsert_relationship(workspace_id, id, from_id, to_id, description)
-    )
+    return _j(native.upsert_relationship(id, from_id, to_id, description))
 
 
 @mcp.tool()
-def delete_relationship(workspace_id: str, id: str) -> dict:
+def delete_relationship(id: str) -> dict:
     """Delete a relationship (revision recorded)."""
     _ensure_init()
-    return _j(native.delete_relationship(workspace_id, id))
+    return _j(native.delete_relationship(id))
 
 
 @mcp.tool()
-def get_model(workspace_id: str) -> dict:
-    """Return elements, relationships, decisions for a workspace."""
+def get_model() -> dict:
+    """Return elements, relationships, decisions."""
     _ensure_init()
-    return _j(native.get_model(workspace_id))
+    return _j(native.get_model())
 
 
 @mcp.tool()
-def validate_model(workspace_id: str) -> dict:
+def validate_model() -> dict:
     """Validate C4 + ADR layers + policy; agent-facing problems with layer/code/message."""
     _ensure_init()
-    return _j(native.validate_workspace(workspace_id))
+    return _j(native.validate_workspace())
 
 
 @mcp.tool()
-def upsert_adr(workspace_id: str, adr: dict, commit: bool = True) -> dict:
+def upsert_adr(adr: dict, commit: bool = True) -> dict:
     """Upsert rigid ADR JSON (Nygard fields + optional policy).
 
     Agent may only set status to ``draft`` or ``proposed``. Unknown fields rejected.
@@ -274,13 +203,11 @@ def upsert_adr(workspace_id: str, adr: dict, commit: bool = True) -> dict:
     """
     _ensure_init()
     payload = dict(adr)
-    payload["workspace_id"] = workspace_id
-    return _j(native.upsert_adr(workspace_id, json.dumps(payload), commit))
+    return _j(native.upsert_adr(json.dumps(payload), commit))
 
 
 @mcp.tool()
 def set_adr_status(
-    workspace_id: str,
     id: str,
     status: str,
     reason: str | None = None,
@@ -298,33 +225,27 @@ def set_adr_status(
     if process_token is not None:
         os.environ["ARCHITECT_C4_CALLER_PROCESS_TOKEN"] = process_token
     try:
-        return _j(
-            native.set_adr_status(
-                workspace_id, id, status, reason, superseded_by_id, commit
-            )
-        )
+        return _j(native.set_adr_status(id, status, reason, superseded_by_id, commit))
     finally:
         os.environ.pop("ARCHITECT_C4_CALLER_PROCESS_TOKEN", None)
 
 
 @mcp.tool()
-def get_adr(workspace_id: str, id: str) -> dict:
+def get_adr(id: str) -> dict:
     """Get one ADR as rigid JSON."""
     _ensure_init()
-    return _j(native.get_adr(workspace_id, id))
+    return _j(native.get_adr(id))
 
 
 @mcp.tool()
-def list_adrs(
-    workspace_id: str, base_url: str = "https://c4.example.com"
-) -> dict:
-    """List ADR index rows for workspace (each includes view_url)."""
+def list_adrs(base_url: str = "https://c4.example.com") -> dict:
+    """List ADR index rows (each includes view_url)."""
     _ensure_init()
-    return {"adrs": _j(native.list_adrs(workspace_id, _base_url(base_url)))}
+    return {"adrs": _j(native.list_adrs(_base_url(base_url)))}
 
 
 @mcp.tool()
-def upsert_flow(workspace_id: str, flow: dict, commit: bool = True) -> dict:
+def upsert_flow(flow: dict, commit: bool = True) -> dict:
     """Upsert rigid Flow JSON (see ``schemas/flow.json``).
 
     Prefer ``kind=c4_dynamic`` with ``steps`` referencing existing C4 element ids.
@@ -332,86 +253,71 @@ def upsert_flow(workspace_id: str, flow: dict, commit: bool = True) -> dict:
     """
     _ensure_init()
     payload = dict(flow)
-    payload["workspace_id"] = workspace_id
-    return _j(native.upsert_flow(workspace_id, json.dumps(payload), commit))
+    return _j(native.upsert_flow(json.dumps(payload), commit))
 
 
 @mcp.tool()
-def get_flow(workspace_id: str, id: str) -> dict:
+def get_flow(id: str) -> dict:
     """Get one Flow as rigid JSON."""
     _ensure_init()
-    return _j(native.get_flow(workspace_id, id))
+    return _j(native.get_flow(id))
 
 
 @mcp.tool()
-def list_flows(
-    workspace_id: str, base_url: str = "https://c4.example.com"
-) -> dict:
-    """List flows for workspace (each includes view_url)."""
+def list_flows(base_url: str = "https://c4.example.com") -> dict:
+    """List flows (each includes view_url)."""
     _ensure_init()
-    return _j(native.list_flows(workspace_id, _base_url(base_url)))
+    return _j(native.list_flows(_base_url(base_url)))
 
 
 @mcp.tool()
-def delete_flow(workspace_id: str, id: str, commit: bool = True) -> dict:
+def delete_flow(id: str, commit: bool = True) -> dict:
     """Delete a flow document (revision recorded)."""
     _ensure_init()
-    return _j(native.delete_flow(workspace_id, id, commit))
+    return _j(native.delete_flow(id, commit))
 
 
 @mcp.tool()
-def get_flow_diagram(
-    workspace_id: str, id: str, base_url: str = "https://c4.example.com"
-) -> dict:
+def get_flow_diagram(id: str, base_url: str = "https://c4.example.com") -> dict:
     """Mermaid for a flow + view_url."""
     _ensure_init()
-    return _j(native.get_flow_diagram(workspace_id, id, _base_url(base_url)))
+    return _j(native.get_flow_diagram(id, _base_url(base_url)))
 
 
 @mcp.tool()
-def get_overview_diagram(
-    workspace_id: str, base_url: str = "https://c4.example.com"
-) -> dict:
+def get_overview_diagram(base_url: str = "https://c4.example.com") -> dict:
     """C4 Context (level 1) Mermaid + view_url for the browser viewer."""
     _ensure_init()
-    return _j(native.get_overview_diagram(workspace_id, _base_url(base_url)))
+    return _j(native.get_overview_diagram(_base_url(base_url)))
 
 
 @mcp.tool()
 def get_layer_diagram(
-    workspace_id: str,
     layer: str,
     parent_id: str | None = None,
     base_url: str = "https://c4.example.com",
 ) -> dict:
     """C4 layer diagram: context|container|component|code. Includes view_url."""
     _ensure_init()
-    return _j(
-        native.get_layer_diagram(
-            workspace_id, layer, parent_id, _base_url(base_url)
-        )
-    )
+    return _j(native.get_layer_diagram(layer, parent_id, _base_url(base_url)))
 
 
 @mcp.tool()
-def get_view_links(
-    workspace_id: str, base_url: str = "https://c4.example.com"
-) -> dict:
+def get_view_links(base_url: str = "https://c4.example.com") -> dict:
     """Absolute viewer URLs for context/containers/components/code/ADRs (for agents)."""
     _ensure_init()
-    return _j(native.get_view_links(workspace_id, _base_url(base_url)))
+    return _j(native.get_view_links(_base_url(base_url)))
 
 
 @mcp.tool()
 def get_scene(
-    workspace_id: str,
     mode: str = "all",
     layer: str | None = None,
     focus: str | None = None,
 ) -> dict:
     """Scene graph JSON for WASM/canvas (and All-layers mode)."""
     _ensure_init()
-    return _j(native.get_scene(workspace_id, mode, layer, focus))
+    return _j(native.get_scene(mode, layer, focus))
 
 
 def _html(html: str, status_code: int = 200) -> HTMLResponse:
@@ -422,55 +328,51 @@ def _html(html: str, status_code: int = 200) -> HTMLResponse:
     return resp
 
 
-@mcp.custom_route("/view/{workspace_id}/adrs/{adr_id}", methods=["GET"])
+@mcp.custom_route("/view/adrs/{adr_id}", methods=["GET"])
 async def c4_adr_detail(request: Request) -> Response:
     """Single ADR page."""
     _ensure_init()
-    workspace_id = request.path_params["workspace_id"]
     adr_id = request.path_params["adr_id"]
     base = _base_url(request.query_params.get("base_url"))
     try:
-        html = native.render_adr_html(workspace_id, adr_id, base)
+        html = native.render_adr_html(adr_id, base)
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=404)
     return _html(html)
 
 
-@mcp.custom_route("/view/{workspace_id}/adrs", methods=["GET"])
+@mcp.custom_route("/view/adrs", methods=["GET"])
 async def c4_adrs_index(request: Request) -> Response:
-    """ADR index for a workspace."""
+    """ADR index."""
     _ensure_init()
-    workspace_id = request.path_params["workspace_id"]
     base = _base_url(request.query_params.get("base_url"))
     try:
-        html = native.render_adrs_html(workspace_id, base)
+        html = native.render_adrs_html(base)
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=400)
     return _html(html)
 
 
-@mcp.custom_route("/view/{workspace_id}/flows/{flow_id}", methods=["GET"])
+@mcp.custom_route("/view/flows/{flow_id}", methods=["GET"])
 async def c4_flow_detail(request: Request) -> Response:
     """Single Flow page (Mermaid)."""
     _ensure_init()
-    workspace_id = request.path_params["workspace_id"]
     flow_id = request.path_params["flow_id"]
     base = _base_url(request.query_params.get("base_url"))
     try:
-        html = native.render_flow_html(workspace_id, flow_id, base)
+        html = native.render_flow_html(flow_id, base)
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=404)
     return _html(html)
 
 
-@mcp.custom_route("/view/{workspace_id}/flows", methods=["GET"])
+@mcp.custom_route("/view/flows", methods=["GET"])
 async def c4_flows_index(request: Request) -> Response:
-    """Flow index for a workspace."""
+    """Flow index."""
     _ensure_init()
-    workspace_id = request.path_params["workspace_id"]
     base = _base_url(request.query_params.get("base_url"))
     try:
-        html = native.render_flows_html(workspace_id, base)
+        html = native.render_flows_html(base)
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=400)
     return _html(html)
@@ -478,31 +380,16 @@ async def c4_flows_index(request: Request) -> Response:
 
 @mcp.custom_route("/view", methods=["GET"])
 @mcp.custom_route("/view/", methods=["GET"])
-async def c4_view_index(request: Request) -> Response:
-    """Project / workspace index — browse and open diagrams."""
-    _ensure_init()
-    base = _base_url(request.query_params.get("base_url"))
-    try:
-        html = native.render_workspaces_html(base)
-    except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=400)
-    return _html(html)
-
-
-@mcp.custom_route("/view/{workspace_id}", methods=["GET"])
 async def c4_view(request: Request) -> Response:
     """Browser C4 viewer. Query: layer, parent, mode=all, renderer=mermaid|wasm|auto."""
     _ensure_init()
-    workspace_id = request.path_params["workspace_id"]
     layer = request.query_params.get("layer") or "context"
     parent_id = request.query_params.get("parent") or request.query_params.get("focus") or None
     mode = request.query_params.get("mode") or "layer"
     renderer = request.query_params.get("renderer") or "mermaid"
     base = _base_url(request.query_params.get("base_url"))
     try:
-        html = native.render_view_html(
-            workspace_id, layer, parent_id, base, mode, renderer
-        )
+        html = native.render_view_html(layer, parent_id, base, mode, renderer)
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=400)
     return _html(html)

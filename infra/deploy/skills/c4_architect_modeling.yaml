@@ -4,9 +4,6 @@ description: |
   through vmcp query_graphql. Use when the user asks for C4 diagrams, Structurizr-like
   modeling, architecture views, drill-down, or get_view_links.
 arguments:
-  - name: workspace_id
-    required: false
-    description: Existing workspace UUID; omit to create a new session/project/workspace first
   - name: goal
     required: true
     description: What to model (e.g. Internet Banking System Big Bank plc)
@@ -20,16 +17,12 @@ template: |
   - Code level = Mermaid classDiagram (no C4Code). Soft light theme is applied by the viewer.
 
   Goal: {{goal}}
-  {{#if workspace_id}}
-  Existing workspace_id: {{workspace_id}}
   Start with ONE call:
   {
-    links: architectC4 { getViewLinks(workspaceId: "{{workspace_id}}") { json } }
-    model: architectC4 { getModel(workspaceId: "{{workspace_id}}") { json } }
-    problems: architectC4 { validateModel(workspaceId: "{{workspace_id}}") { json } }
+    links: architectC4 { getViewLinks { json } }
+    model: architectC4 { getModel { json } }
+    problems: architectC4 { validateModel { json } }
   }
-  {{else}}
-  Create session → project → workspace, then upsert person/system/container/component/code + relationships.
-  {{/if}}
+  Then upsert person/system/container/component/code + relationships.
 
   References: https://c4model.com/ and docs/examples/big-bank-internet-banking.md

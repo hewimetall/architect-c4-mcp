@@ -19,6 +19,6 @@ Free-form markdown ADRs let agents hallucinate fields and cannot attach machine-
 
 ## Consequences
 
-- Breaking: `add_adr(..., content_md)` removed → `upsert_adr(workspace_id, adr)`.
+- Breaking: free-form ADR markdown writes were replaced by `upsert_adr(adr)`.
 - Agents must pass schema-valid JSON (`deny_unknown_fields`).
 - Viewer renders structured sections + policy rules.

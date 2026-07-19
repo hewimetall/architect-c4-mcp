@@ -10,7 +10,6 @@
       "type": "string",
       "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
     },
-    "workspace_id": { "type": "string" },
     "title": { "type": "string", "minLength": 1, "maxLength": 200 },
     "kind": {
       "type": "string",

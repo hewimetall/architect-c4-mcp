@@ -27,15 +27,15 @@ Workflow соберёт manylinux/musllinux/macOS/Windows wheels + sdist, зал
 ## Проверка после релиза
 
 ```bash
-uvx architect-c4==0.3.0
+uvx architect-c4==0.3.0 --docs /path/to/docs
 # или
 pip install architect-c4==0.3.0
-architect-c4
+architect-c4 --docs /path/to/docs
 ```
 
 Локально без PyPI (smoke wheel):
 
 ```bash
 uv run maturin build --release --out dist
-uvx --from ./dist/architect_c4-*.whl architect-c4
+uvx --from ./dist/architect_c4-*.whl architect-c4 --docs /path/to/docs
 ```

@@ -8,7 +8,6 @@ services:
       - ${PRODUCT_DOCS:-./examples/docs}:/docs
     environment:
       ARCHITECT_C4_DOCS: /docs
-      ARCHITECT_C4_WORKSPACE_ID: default
       ARCHITECT_C4_TRANSPORT: http
       ARCHITECT_C4_HOST: 0.0.0.0
       ARCHITECT_C4_PORT: "8766"

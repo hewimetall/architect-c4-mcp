@@ -12,25 +12,18 @@ live in **architect-c4**.
   - `.cursor/skills/c4-architect-modeling/`
   - `.cursor/skills/architecture-decision-records/`
 
-## Live workspace
+## Viewer
 
-| Field | Value |
-|-------|-------|
-| workspace_id | `8c3b4690-cd3d-449f-8de0-484ae88829d0` |
-| project | `big-bank-plc` |
-
-### Viewer links
-
-- Context: <https://c4.example.com/view/8c3b4690-cd3d-449f-8de0-484ae88829d0?layer=context>
-- Containers (IBS): <https://c4.example.com/view/8c3b4690-cd3d-449f-8de0-484ae88829d0?layer=container&parent=ibs>
-- Components (API): <https://c4.example.com/view/8c3b4690-cd3d-449f-8de0-484ae88829d0?layer=component&parent=api>
-- Code (Security): <https://c4.example.com/view/8c3b4690-cd3d-449f-8de0-484ae88829d0?layer=code&parent=security>
-- ADRs: <https://c4.example.com/view/8c3b4690-cd3d-449f-8de0-484ae88829d0/adrs>
+- Context: <https://c4.example.com/view?layer=context>
+- Containers (IBS): <https://c4.example.com/view?layer=container&parent=ibs>
+- Components (API): <https://c4.example.com/view?layer=component&parent=api>
+- Code (Security): <https://c4.example.com/view?layer=code&parent=security>
+- ADRs: <https://c4.example.com/view/adrs>
 
 ### Agent
 
 ```text
-get_view_links("8c3b4690-cd3d-449f-8de0-484ae88829d0")
+get_view_links()
 ```
 
 ## What was modeled

@@ -3,7 +3,7 @@
 Сервис рядом с чужим git-репозиторием. Архитектура пишется **только** в его `docs/`.
 
 Эталон модели:  
-https://architecture.runmcp.ru/view/architect-c4-self?mode=all&renderer=wasm
+https://architecture.runmcp.ru/view?mode=all&renderer=wasm
 
 ---
 
@@ -31,7 +31,7 @@ architect-c4 (sidecar)   ← этот сервис, mount на docs/
 3. Все записи идут через **очередь на Rust** (один writer).
 4. Python — тонкий FastMCP; логика — Rust/PyO3.
 5. Просмотр по умолчанию — **Mermaid**. WASM — по желанию, не в базовом образе.
-6. Старт: смонтировал `docs/` и работаешь. Без `create_project` / bare / worktree.
+6. Старт: смонтировал `docs/` и работаешь.
 
 Аргументы MCP по-прежнему объекты JSON в tool call — это не файлы на диске.  
 `schemas/*.json` — только схема входа.
@@ -74,19 +74,17 @@ docs/
 
 ## Инструменты MCP
 
-**Оставляем:**  
-`upsert_element`, `upsert_relationship`, `delete_relationship`, `get_model`, `validate_model`,  
-`upsert_adr`, `set_adr_status`, `get_adr`, `list_adrs`,  
-`upsert_flow`, `get_flow`, `list_flows`, `delete_flow`, `get_flow_diagram`,  
-`get_overview_diagram`, `get_layer_diagram`, `get_view_links`.
-
-**Убираем из основного сценария:**  
-`create_project`, `checkout_workspace` → вместо них bind на `ARCHITECT_C4_DOCS`.
+**Оставляем:**
+`bind_docs`,
+`upsert_element`, `upsert_relationship`, `delete_relationship`, `get_model`, `validate_model`,
+`upsert_adr`, `set_adr_status`, `get_adr`, `list_adrs`,
+`upsert_flow`, `get_flow`, `list_flows`, `delete_flow`, `get_flow_diagram`,
+`get_overview_diagram`, `get_layer_diagram`, `get_view_links`, `get_scene`.
 
 **Сценарий:**
 
 ```text
-старт с ARCHITECT_C4_DOCS
+старт: uvx architect-c4 --docs /path/to/docs
 → элементы и связи
 → validate_model
 → ADR / flow

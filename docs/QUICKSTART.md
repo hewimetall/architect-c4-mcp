@@ -6,9 +6,7 @@
 
 ```bash
 uvx architect-c4 \
-  --docs /abs/path/to/product/docs \
-  --workspace-id default \
-  --public-base https://c4.example.com
+  --docs /abs/path/to/product/docs
 ```
 
 Эквивалент через env: `ARCHITECT_C4_DOCS` (CLI `--docs` имеет приоритет).
@@ -28,10 +26,10 @@ uvx architect-c4 \
   --docs /abs/path/to/product/docs \
   --transport http --host 127.0.0.1 --port 8766
 # MCP:  http://127.0.0.1:8766/mcp
-# View: http://127.0.0.1:8766/view/default?layer=context
+# View: http://127.0.0.1:8766/view?layer=context
 ```
 
-Флаги: `--docs`/`-d`, `--workspace-id`/`-w`, `--transport`, `--host`, `--port`, `--public-base`.
+Флаги: `--docs`/`-d`, `--transport`, `--host`, `--port`, `--public-base`.
 
 На диск продукта пишутся только:
 
@@ -51,7 +49,6 @@ docs/flows/*.toml
       "args": [
         "architect-c4",
         "--docs", "/ABS/product/docs",
-        "--workspace-id", "default",
         "--public-base", "https://c4.example.com"
       ]
     }

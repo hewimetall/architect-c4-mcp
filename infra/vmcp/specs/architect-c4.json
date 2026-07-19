@@ -2,27 +2,7 @@
   "server": "architect-c4",
   "tools": [
     {
-      "name": "create_session",
-      "read_only": false,
-      "task_support": "forbidden"
-    },
-    {
-      "name": "get_session",
-      "read_only": true,
-      "task_support": "forbidden"
-    },
-    {
-      "name": "list_sessions",
-      "read_only": true,
-      "task_support": "forbidden"
-    },
-    {
-      "name": "create_project",
-      "read_only": false,
-      "task_support": "forbidden"
-    },
-    {
-      "name": "checkout_workspace",
+      "name": "bind_docs",
       "read_only": false,
       "task_support": "forbidden"
     },
@@ -52,12 +32,47 @@
       "task_support": "forbidden"
     },
     {
-      "name": "add_adr",
+      "name": "upsert_adr",
       "read_only": false,
       "task_support": "forbidden"
     },
     {
+      "name": "set_adr_status",
+      "read_only": false,
+      "task_support": "forbidden"
+    },
+    {
+      "name": "get_adr",
+      "read_only": true,
+      "task_support": "forbidden"
+    },
+    {
       "name": "list_adrs",
+      "read_only": true,
+      "task_support": "forbidden"
+    },
+    {
+      "name": "upsert_flow",
+      "read_only": false,
+      "task_support": "forbidden"
+    },
+    {
+      "name": "get_flow",
+      "read_only": true,
+      "task_support": "forbidden"
+    },
+    {
+      "name": "list_flows",
+      "read_only": true,
+      "task_support": "forbidden"
+    },
+    {
+      "name": "delete_flow",
+      "read_only": false,
+      "task_support": "forbidden"
+    },
+    {
+      "name": "get_flow_diagram",
       "read_only": true,
       "task_support": "forbidden"
     },

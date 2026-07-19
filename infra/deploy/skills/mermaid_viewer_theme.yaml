@@ -22,7 +22,7 @@ template: |
   {
     search_theme: search(q: "get_layer_diagram mermaid") { server tool description }
     code: architectC4 {
-      getLayerDiagram(workspaceId: "WORKSPACE", layer: "{{layer}}", parentId: "PARENT") { json }
+      getLayerDiagram(layer: "{{layer}}", parentId: "PARENT") { json }
     }
   }
 

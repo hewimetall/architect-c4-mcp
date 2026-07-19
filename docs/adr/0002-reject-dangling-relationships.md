@@ -15,7 +15,7 @@ manual SQLite cleanup. ADR `#1` was also scoped to missing `sys`.
 
 1. `upsert_relationship` validates both endpoints exist before write.
 2. Add `delete_relationship` (with delete revision) for recovery.
-3. `add_adr` / upsert decision rejects `scope_element_id` that is not an element.
+3. `upsert_adr` rejects `scope_element_id` that is not an element.
 
 ## Consequences
 

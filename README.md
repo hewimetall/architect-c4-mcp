@@ -17,15 +17,13 @@ architect-c4 (sidecar)  ← FastMCP + очередь записи Rust
 - история — **git**
 - промпты: https://gofastmcp.com/servers/prompts
 
-Эталон: [architect-c4-self](https://architecture.runmcp.ru/view/architect-c4-self?mode=all&renderer=wasm)
+Эталон: [architect-c4-self](https://architecture.runmcp.ru/view?mode=all&renderer=wasm)
 
 ## Локально без сборки
 
 ```bash
 uvx architect-c4 \
-  --docs /abs/path/to/product-repo/docs \
-  --workspace-id default \
-  --public-base https://c4.example.com
+  --docs /abs/path/to/product-repo/docs
 ```
 
 Cursor:
@@ -38,7 +36,6 @@ Cursor:
       "args": [
         "architect-c4",
         "--docs", "/ABS/product/docs",
-        "--workspace-id", "default",
         "--public-base", "https://c4.example.com"
       ]
     }
