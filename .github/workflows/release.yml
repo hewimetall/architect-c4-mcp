@@ -108,18 +108,12 @@ jobs:
           name: wheels-musllinux-${{ matrix.target }}
           path: dist
 
+  # macos-13 (Intel) runners are scarce/deprecated and can queue forever.
+  # Ship arm64 macOS wheels from macos-14; x86_64 macOS users can use Rosetta / sdist.
   macos:
-    name: Wheel macos ${{ matrix.target }}
+    name: Wheel macos aarch64
     needs: [quality]
-    runs-on: ${{ matrix.runner }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - runner: macos-13
-            target: x86_64
-          - runner: macos-14
-            target: aarch64
+    runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -128,12 +122,12 @@ jobs:
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
-          target: ${{ matrix.target }}
+          target: aarch64
           args: --release --out dist --interpreter 3.12 3.13
           sccache: "true"
       - uses: actions/upload-artifact@v4
         with:
-          name: wheels-macos-${{ matrix.target }}
+          name: wheels-macos-aarch64
           path: dist
 
   windows:
