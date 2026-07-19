@@ -2,9 +2,6 @@
 
 Сервис рядом с чужим git-репозиторием. Архитектура пишется **только** в его `docs/`.
 
-Эталон модели:  
-https://architecture.runmcp.ru/view/architect-c4-self?mode=all&renderer=wasm
-
 ---
 
 ## Зачем
@@ -27,11 +24,11 @@ architect-c4 (sidecar)   ← этот сервис, mount на docs/
 ## Правила
 
 1. На диске в `docs/` — **только TOML**, без JSON-файлов.
-2. **SQLite в репо нет.** Истина — toml; история — git.
+2. Истина — TOML; история — git.
 3. Все записи идут через **очередь на Rust** (один writer).
 4. Python — тонкий FastMCP; логика — Rust/PyO3.
 5. Просмотр по умолчанию — **Mermaid**. WASM — по желанию, не в базовом образе.
-6. Старт: смонтировал `docs/` и работаешь. Без `create_project` / bare / worktree.
+6. Старт: смонтировал `docs/` и работаешь.
 
 Аргументы MCP по-прежнему объекты JSON в tool call — это не файлы на диске.  
 `schemas/*.json` — только схема входа.
@@ -47,8 +44,7 @@ docs/
   flows/{id}.toml
 ```
 
-**ADR:** поля Nygard + policy/refs; `context` / `decision` / `consequences` — GFM (таблицы, код, списки), без raw HTML; многострочники через `'''`; лимит prose **20000**; агент ставит только `draft` | `proposed`.  
-Старые `.json` при bind один раз переписываются в `.toml`.
+**ADR:** поля Nygard + policy/refs; `context` / `decision` / `consequences` — GFM (таблицы, код, списки), без raw HTML; многострочники через `'''`; лимит prose **20000**; агент ставит только `draft` | `proposed`.
 
 **Flow:** `c4_dynamic` | `sequence` | `state`; шаги ссылаются на существующие id элементов.
 
@@ -68,25 +64,23 @@ docs/
 
 Чтение — из снимка в памяти (перечитывается с диска при изменении файлов).
 
-Очередь **в процессе**, не Redis и не SQLite. После рестарта недописанные jobs пропадают; на диске остаётся то, что уже записано в toml.
+Очередь **в процессе**. После рестарта недописанные jobs пропадают; на диске остаётся то, что уже записано в TOML.
 
 ---
 
 ## Инструменты MCP
 
-**Оставляем:**  
-`upsert_element`, `upsert_relationship`, `delete_relationship`, `get_model`, `validate_model`,  
-`upsert_adr`, `set_adr_status`, `get_adr`, `list_adrs`,  
-`upsert_flow`, `get_flow`, `list_flows`, `delete_flow`, `get_flow_diagram`,  
-`get_overview_diagram`, `get_layer_diagram`, `get_view_links`.
-
-**Убираем из основного сценария:**  
-`create_project`, `checkout_workspace` → вместо них bind на `ARCHITECT_C4_DOCS`.
+**Оставляем:**
+`bind_docs`,
+`upsert_element`, `upsert_relationship`, `delete_relationship`, `get_model`, `validate_model`,
+`upsert_adr`, `set_adr_status`, `get_adr`, `list_adrs`,
+`upsert_flow`, `get_flow`, `list_flows`, `delete_flow`, `get_flow_diagram`,
+`get_overview_diagram`, `get_layer_diagram`, `get_view_links`, `get_scene`.
 
 **Сценарий:**
 
 ```text
-старт с ARCHITECT_C4_DOCS
+старт: uvx architect-c4 --docs /path/to/docs
 → элементы и связи
 → validate_model
 → ADR / flow
@@ -123,8 +117,8 @@ context/decision/consequences = GFM (таблицы, код, списки). Бе
 | Есть | Нет |
 |------|-----|
 | domain, app, validate, policy, render | SQLite / JSON как SoT в `docs/` |
-| model / adr / flow → toml + очередь | bare git + worktree как обязательный путь |
-| git — commit на хосте в репо продукта | research-заметки в поставке |
+| model / adr / flow → TOML + очередь | workspace / bare git / worktree в API |
+| git — commit на хосте в репо продукта | посторонние заметки в поставке |
 | Mermaid viewer по умолчанию | WASM в базовом образе |
 
 ---
@@ -132,10 +126,11 @@ context/decision/consequences = GFM (таблицы, код, списки). Бе
 ## Запуск
 
 ```bash
-export ARCHITECT_C4_DOCS=/путь/к/репо/docs
-export ARCHITECT_C4_PUBLIC_BASE=https://c4.example.com   # опционально
-export ARCHITECT_C4_TRANSPORT=http                       # или stdio
-uv run architect-c4
+uv run architect-c4 \
+  --docs /путь/к/репо/docs \
+  --public-base https://c4.example.com \
+  --transport http
+# или: ARCHITECT_C4_DOCS=... (CLI --docs важнее)
 ```
 
 Docker:
@@ -158,10 +153,10 @@ services:
 
 ## CI
 
-- push/PR: тесты Python + Rust, coverage ≥ 93%, lint, сборка Docker  
-- tag `v*`: GitHub Release + образ в GHCR  
+- push/PR: pytest, `cargo test`, lint, сборка Docker  
+- tag `v*`: coverage ≥ 93% (py+rust) → PyPI (`architect-c4` wheels) + GitHub Release + GHCR  
 
-Обязательные тесты: toml round-trip ADR/flow, rewrite json→toml, очередь сериализует запись, bind без `.db`, список промптов.
+Обязательные тесты: TOML round-trip ADR/flow, очередь сериализует запись, bind на `docs/`, список промптов.
 
 ---
 
@@ -169,7 +164,7 @@ services:
 
 - для работы достаточно `ARCHITECT_C4_DOCS`
 - в репо продукта появляются только `docs/**/*.toml`
-- нет `.db` и JSON ADR/Flow
+- ADR/Flow пишутся как TOML
 - параллельные upsert не ломают файлы
 - ADR в viewer — HTML из GFM
 - есть 5 промптов и зелёный CI с образом

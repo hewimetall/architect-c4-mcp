@@ -5,13 +5,13 @@ See https://gofastmcp.com/servers/prompts
 
 from __future__ import annotations
 
-import os
 from typing import Any
 
 
 def register_prompts(mcp: Any) -> None:
+    import os
+
     docs = os.environ.get("ARCHITECT_C4_DOCS", "./docs")
-    ws = os.environ.get("ARCHITECT_C4_WORKSPACE_ID", "default")
 
     @mcp.prompt(
         name="sidecar_onboard",
@@ -24,11 +24,10 @@ def register_prompts(mcp: Any) -> None:
             [
                 "# Sidecar onboard",
                 f"- docs: `{docs}`",
-                f"- workspace_id: `{ws}`",
                 f"- system: `{system_id}` / {system_name}",
                 "",
                 "Шаги:",
-                f"1. bind_docs(workspace_id={ws!r})  # или ARCHITECT_C4_DOCS при старте",
+                "1. bind_docs()  # или --docs / ARCHITECT_C4_DOCS при старте",
                 f"2. upsert_element(..., id={system_id!r}, kind='software_system', name=…)",
                 "3. validate_model → get_view_links",
                 "4. git add docs && commit на хосте",
@@ -108,7 +107,7 @@ def register_prompts(mcp: Any) -> None:
         return "\n".join(
             [
                 "# Validate",
-                "1. validate_model(workspace_id)",
+                "1. validate_model()",
                 "2. Починить dangling relationships / parents / ADR scope",
                 "3. Учесть policy.forbid у accepted ADR",
                 "4. get_overview_diagram / get_view_links",

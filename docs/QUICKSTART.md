@@ -1,34 +1,35 @@
 # Быстрый старт (sidecar)
 
-## Требования
+## Локально без сборки (PyPI)
 
-- Python 3.12+ ([uv](https://github.com/astral-sh/uv))
-- Rust stable
-
-## Установка
+Нужен Python 3.12+ и [uv](https://github.com/astral-sh/uv) (или pip). **Rust не нужен.**
 
 ```bash
-git clone https://github.com/hewimetall/architect-c4-mcp.git
-cd architect-c4-mcp
-uv sync --extra dev
-uv run maturin develop --manifest-path packages/architect-c4-app/Cargo.toml
+uvx architect-c4 \
+  --docs /abs/path/to/product/docs
 ```
 
-## Sidecar к репозиторию продукта
+Эквивалент через env: `ARCHITECT_C4_DOCS` (CLI `--docs` имеет приоритет).
 
-В продукте создайте `docs/` (или используйте существующий).
+Или поставить CLI в PATH:
 
 ```bash
-export ARCHITECT_C4_DOCS=/abs/path/to/product/docs
-export ARCHITECT_C4_WORKSPACE_ID=default
-export ARCHITECT_C4_PUBLIC_BASE=https://c4.example.com
-export ARCHITECT_C4_TRANSPORT=http
-export ARCHITECT_C4_PORT=8766
-uv run architect-c4
+uv tool install architect-c4
+# либо: pip install architect-c4
+architect-c4 --docs /abs/path/to/product/docs
 ```
 
-- MCP: `http://127.0.0.1:8766/mcp`
-- Viewer: `/view/{workspace_id}?layer=context`
+HTTP:
+
+```bash
+uvx architect-c4 \
+  --docs /abs/path/to/product/docs \
+  --transport http --host 127.0.0.1 --port 8766
+# MCP:  http://127.0.0.1:8766/mcp
+# View: http://127.0.0.1:8766/view?layer=context
+```
+
+Флаги: `--docs`/`-d`, `--transport`, `--host`, `--port`, `--public-base`.
 
 На диск продукта пишутся только:
 
@@ -38,39 +39,57 @@ docs/adr/*.toml
 docs/flows/*.toml
 ```
 
-SQLite-индексы живут **в памяти** процесса sidecar — не в git продукта.
-
-## Cursor (stdio)
+### Cursor (stdio, без клона репо)
 
 ```json
 {
   "mcpServers": {
     "architect-c4": {
-      "command": "uv",
-      "args": ["run", "--directory", "/ABS/architect-c4-mcp", "architect-c4"],
-      "env": {
-        "ARCHITECT_C4_DOCS": "/ABS/product/docs",
-        "ARCHITECT_C4_WORKSPACE_ID": "default",
-        "ARCHITECT_C4_PUBLIC_BASE": "https://c4.example.com"
-      }
+      "command": "uvx",
+      "args": [
+        "architect-c4",
+        "--docs", "/ABS/product/docs",
+        "--public-base", "https://c4.example.com"
+      ]
     }
   }
 }
 ```
 
-## Docker
+Пакет: https://pypi.org/project/architect-c4/
+
+> Пока релиза на PyPI нет — сделайте tag `v*` после настройки Trusted Publisher (см. [PUBLISH.md](./PUBLISH.md)). Альтернатива без PyPI: Docker ниже.
+
+## Docker (тоже без исходников)
 
 ```bash
-docker compose -f docker-compose.sidecar.yml up --build
+docker pull ghcr.io/hewimetall/architect-c4-mcp:latest
+docker run --rm -p 8766:8766 \
+  -v /abs/path/to/product/docs:/docs \
+  -e ARCHITECT_C4_DOCS=/docs \
+  -e ARCHITECT_C4_TRANSPORT=http \
+  -e ARCHITECT_C4_PUBLIC_BASE=https://c4.example.com \
+  ghcr.io/hewimetall/architect-c4-mcp:latest
 ```
 
-Смонтируйте `./docs` продукта в `/docs`.
+Или `docker compose -f docker-compose.sidecar.yml up` (сборка локального образа).
+
+## Разработка из исходников
+
+Нужны Python 3.12+, Rust stable, uv.
+
+```bash
+git clone https://github.com/hewimetall/architect-c4-mcp.git
+cd architect-c4-mcp
+uv sync --extra dev
+uv run maturin develop
+export ARCHITECT_C4_DOCS=/abs/path/to/product/docs
+uv run architect-c4
+```
 
 ## Промпты агента
 
 `sidecar_onboard` · `model_c4` · `write_adr` · `write_flow` · `validate_architecture`
-
-ADR:
 
 ```text
 upsert_adr с object. status draft|proposed.

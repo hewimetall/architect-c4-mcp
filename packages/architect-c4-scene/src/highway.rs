@@ -4,8 +4,6 @@
 //!   `route_highway_path`) — classes connect leaf-port → leaf-port.
 //! - **Between** containers / parent→child: left bus rails (no pierce).
 //!
-//! See `docs/research/schematic-left-bus-rails.md`.
-
 use crate::bus::{
     allocate_left_buses, allocate_right_buses, is_ancestor, neighbor_attach_points, pick_long_side,
     route_ancestor_on_rail, route_cross_on_rails, route_neighbor_channel,

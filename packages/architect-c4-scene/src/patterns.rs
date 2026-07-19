@@ -426,7 +426,7 @@ fn point_on_side(node: &SceneNode, p: (f64, f64), eps: f64) -> Option<&'static s
 }
 
 /// Nudge polyline endpoint along a vertical (W/E) or horizontal (N/S) side.
-fn set_end_along_side(pts: &mut Vec<(f64, f64)>, side: &str, along: f64) {
+fn set_end_along_side(pts: &mut [(f64, f64)], side: &str, along: f64) {
     if pts.len() < 2 {
         return;
     }
@@ -460,7 +460,7 @@ fn set_end_along_side(pts: &mut Vec<(f64, f64)>, side: &str, along: f64) {
     }
 }
 
-fn set_start_along_side(pts: &mut Vec<(f64, f64)>, side: &str, along: f64) {
+fn set_start_along_side(pts: &mut [(f64, f64)], side: &str, along: f64) {
     if pts.len() < 2 {
         return;
     }

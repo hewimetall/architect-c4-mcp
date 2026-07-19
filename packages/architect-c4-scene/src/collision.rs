@@ -1,6 +1,5 @@
 //! Gamedev-style collision for edge parts vs node boxes.
 //! Broad phase: spatial hash of AABBs. Narrow: segment vs AABB.
-//! See `docs/research/edge-collision-gamedev.md`.
 
 use crate::SceneNode;
 use std::collections::{HashMap, HashSet};

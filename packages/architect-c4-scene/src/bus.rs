@@ -3,8 +3,7 @@
 //! Pass 1 — walk matryoshka groups, assign each its own left rail (`bus_x`).
 //! Pass 2 — route nets on those rails; never merge different owners onto one X.
 //!
-//! Rules: KiCad hierarchy splits buses; Altium sheet-entry vertical connectivity;
-//! see `docs/research/schematic-left-bus-rails.md`.
+//! Rules: KiCad hierarchy splits buses; Altium sheet-entry vertical connectivity.
 
 use crate::collision::Aabb;
 use crate::ports::{pick_port_avoiding, side_facing, Port};

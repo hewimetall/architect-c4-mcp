@@ -1,6 +1,5 @@
 //! Edge routing with border **viewpoints** (ports).
 //! Rhombus = connection point on the node edge — never the node center.
-//! See `docs/research/edge-routing-arrows.md`.
 
 use crate::{SceneEdge, SceneNode};
 

@@ -33,39 +33,27 @@ jobs:
           ln -sf /usr/lib/x86_64-linux-gnu/libpython3.12.so.1.0 .libs/libpython3.12.so
           export LIBRARY_PATH="$PWD/.libs:${LIBRARY_PATH:-}"
           export LD_LIBRARY_PATH="$PWD/.libs:${LD_LIBRARY_PATH:-}"
-          uv run maturin develop --manifest-path packages/architect-c4-app/Cargo.toml
+          uv run maturin develop
 
       - name: Pytest
         run: uv run pytest -q
 
-      - name: Python coverage (median ≥ 93%)
-        run: chmod +x scripts/*.sh && ./scripts/python-coverage.sh
+      # Coverage gate (median ≥ 93%) — только на tag v* в release.yml
 
   test-rust:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: astral-sh/setup-uv@v5
-
       - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: llvm-tools-preview
 
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: architect-c4-rust
 
-      - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-llvm-cov
-
+      # Coverage gate (median ≥ 93%) — только на tag v* в release.yml
       - name: Rust unit tests
         run: cargo test --workspace --exclude architect-c4-app
-
-      - name: Rust coverage (median ≥ 93%)
-        run: chmod +x scripts/*.sh && ./scripts/rust-coverage.sh
 
   lint:
     runs-on: ubuntu-latest

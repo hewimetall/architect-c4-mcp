@@ -4,7 +4,6 @@
 //! SQLite indexes are **in-memory** (never written into the product git tree).
 //! Mutations that touch docs go through [`architect_c4_queue::WriteQueue`].
 
-use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -24,7 +23,7 @@ use architect_c4_queue::WriteQueue;
 use architect_c4_render::{
     adr_detail_html, adrs_index_html, all_layers_mermaid, diagram_for_layer, flow_detail_html,
     flow_to_mermaid, flows_index_html, normalize_public_base, overview_mermaid,
-    scene_json_for_view, view_html, view_links, workspaces_index_html, DiagramInput, WorkspaceCard,
+    scene_json_for_view, view_html, view_links, DiagramInput,
 };
 use architect_c4_revision::SqliteRevisionStore;
 use architect_c4_scene::ViewMode;
@@ -39,6 +38,8 @@ use pyo3::prelude::*;
 use pyo3::types::PyModule;
 use serde_json::json;
 
+const WS: &str = "sidecar";
+
 struct AppState {
     sessions: SqliteSessionStore,
     model: Arc<SqliteModelStore>,
@@ -46,11 +47,9 @@ struct AppState {
     flows: FlowService,
     #[allow(dead_code)]
     revisions: Arc<SqliteRevisionStore>,
-    git: Arc<GixGitAdapter>,
-    root: PathBuf,
     queue: Arc<WriteQueue>,
-    /// workspace_id → absolute docs/ directory
-    docs_by_ws: Mutex<HashMap<String, PathBuf>>,
+    /// Absolute docs/ directory bound to the sidecar workspace.
+    docs_dir: Mutex<Option<PathBuf>>,
 }
 
 static APP: Mutex<Option<Arc<AppState>>> = Mutex::new(None);
@@ -65,24 +64,16 @@ fn map_err(e: architect_c4_domain::DomainError) -> PyErr {
     pyo3::exceptions::PyValueError::new_err(e.to_string())
 }
 
-fn persist_model_toml(
-    s: &AppState,
-    workspace_id: &str,
-) -> Result<(), architect_c4_domain::DomainError> {
-    let docs = s
-        .docs_by_ws
-        .lock()
-        .get(workspace_id)
-        .cloned()
-        .ok_or_else(|| {
-            architect_c4_domain::DomainError::Message(format!(
-                "workspace {workspace_id} has no docs bind (call bind_docs)"
-            ))
-        })?;
+fn persist_model_toml(s: &AppState) -> Result<(), architect_c4_domain::DomainError> {
+    let docs = s.docs_dir.lock().clone().ok_or_else(|| {
+        architect_c4_domain::DomainError::Message(
+            "sidecar has no docs bind (call bind_docs)".into(),
+        )
+    })?;
     let model = ModelFile {
-        workspace_id: workspace_id.into(),
-        elements: s.model.list_elements(workspace_id)?,
-        relationships: s.model.list_relationships(workspace_id)?,
+        workspace_id: WS.into(),
+        elements: s.model.list_elements(WS)?,
+        relationships: s.model.list_relationships(WS)?,
     };
     write_model_toml(&docs.join("model.toml"), &model)
         .map_err(architect_c4_domain::DomainError::Message)
@@ -109,25 +100,21 @@ fn init(data_dir: &str) -> PyResult<()> {
         adr,
         flows,
         revisions: rev,
-        git,
-        root,
         queue,
-        docs_by_ws: Mutex::new(HashMap::new()),
+        docs_dir: Mutex::new(None),
     });
     *APP.lock() = Some(app.clone());
 
-    // Sidecar auto-bind: ARCHITECT_C4_DOCS + ARCHITECT_C4_WORKSPACE_ID
+    // Sidecar auto-bind: ARCHITECT_C4_DOCS only.
     if let Ok(docs) = std::env::var("ARCHITECT_C4_DOCS") {
         let docs = PathBuf::from(docs);
-        let ws = std::env::var("ARCHITECT_C4_WORKSPACE_ID").unwrap_or_else(|_| "default".into());
-        bind_docs_inner(&app, &ws, &docs).map_err(map_err)?;
+        bind_docs_inner(&app, &docs).map_err(map_err)?;
     }
     Ok(())
 }
 
 fn bind_docs_inner(
     s: &AppState,
-    workspace_id: &str,
     docs_dir: &std::path::Path,
 ) -> Result<serde_json::Value, architect_c4_domain::DomainError> {
     let docs_dir = docs_dir
@@ -140,29 +127,32 @@ fn bind_docs_inner(
         rewrite_legacy_flows(&docs_dir).map_err(architect_c4_domain::DomainError::Message)?;
     let repo_root = repo_root_from_docs(&docs_dir);
     // Workspace row (path = repo root for gix commits of docs/…)
-    if s.sessions.get_workspace(workspace_id).is_err() {
+    if s.sessions.get_workspace(WS).is_err() {
         let _ = s.sessions.create_workspace(
-            workspace_id,
+            WS,
             "docs-sidecar",
             "main",
             &repo_root.to_string_lossy(),
         )?;
     }
-    s.adr.bind_worktree(workspace_id, repo_root.clone());
-    s.flows.bind_worktree(workspace_id, repo_root);
-    s.docs_by_ws
-        .lock()
-        .insert(workspace_id.to_string(), docs_dir.clone());
+    s.adr.bind_worktree(WS, repo_root.clone());
+    s.flows.bind_worktree(WS, repo_root);
+    *s.docs_dir.lock() = Some(docs_dir.clone());
+
+    // Rebind must not merge with a previous docs tree (single in-memory WS).
+    s.model.clear_workspace(WS)?;
+    s.adr.clear_workspace(WS)?;
+    s.flows.clear_workspace(WS)?;
 
     // Load model.toml into memory index
     let model_file = read_model_toml(&docs_dir.join("model.toml"))
         .map_err(architect_c4_domain::DomainError::Message)?;
     for mut el in model_file.elements {
-        el.workspace_id = workspace_id.into();
+        el.workspace_id = WS.into();
         let _ = s.model.upsert_element(el)?;
     }
     for mut rel in model_file.relationships {
-        rel.workspace_id = workspace_id.into();
+        rel.workspace_id = WS.into();
         let _ = s.model.upsert_relationship(rel)?;
     }
     // Load ADR/flow toml into SQL index (commit=false — files already on disk)
@@ -177,7 +167,7 @@ fn bind_docs_inner(
                 continue;
             }
             let mut d = read_adr_toml(&path).map_err(architect_c4_domain::DomainError::Message)?;
-            d.workspace_id = workspace_id.into();
+            d.workspace_id = WS.into();
             let _ = s.adr.import_from_disk(d)?;
         }
     }
@@ -192,13 +182,12 @@ fn bind_docs_inner(
                 continue;
             }
             let mut f = read_flow_toml(&path).map_err(architect_c4_domain::DomainError::Message)?;
-            f.workspace_id = workspace_id.into();
+            f.workspace_id = WS.into();
             let _ = s.flows.upsert_flow(f, false)?;
         }
     }
 
     Ok(json!({
-        "workspace_id": workspace_id,
         "docs": docs_dir,
         "rewrote_adr_json": n_adr,
         "rewrote_flow_json": n_flow,
@@ -207,15 +196,14 @@ fn bind_docs_inner(
 
 /// Bind workspace to a host `docs/` directory (sidecar happy path).
 #[pyfunction]
-fn bind_docs(workspace_id: &str, docs_dir: &str) -> PyResult<String> {
+fn bind_docs(docs_dir: &str) -> PyResult<String> {
     let s = state()?;
     let docs = PathBuf::from(docs_dir);
     let s2 = s.clone();
-    let ws = workspace_id.to_string();
     let out = s
         .queue
         .submit(move || {
-            let v = bind_docs_inner(&s2, &ws, &docs)?;
+            let v = bind_docs_inner(&s2, &docs)?;
             Ok(v.to_string())
         })
         .map_err(map_err)?;
@@ -223,78 +211,8 @@ fn bind_docs(workspace_id: &str, docs_dir: &str) -> PyResult<String> {
 }
 
 #[pyfunction]
-fn create_session(meta: &str) -> PyResult<String> {
-    let s = state()?;
-    let sess = s.sessions.create_session(meta).map_err(map_err)?;
-    Ok(serde_json::to_string(&sess).unwrap())
-}
-
-#[pyfunction]
-fn get_session(session_id: &str) -> PyResult<String> {
-    let s = state()?;
-    Ok(serde_json::to_string(&s.sessions.get_session(session_id).map_err(map_err)?).unwrap())
-}
-
-#[pyfunction]
-fn list_sessions() -> PyResult<String> {
-    let s = state()?;
-    Ok(serde_json::to_string(&s.sessions.list_sessions().map_err(map_err)?).unwrap())
-}
-
-#[pyfunction]
-fn create_project(project_id: &str) -> PyResult<String> {
-    let s = state()?;
-    let bare = s.root.join("projects").join(format!("{project_id}.git"));
-    s.git.init_bare(&bare).map_err(map_err)?;
-    Ok(json!({"project_id": project_id, "path": bare}).to_string())
-}
-
-#[pyfunction]
-fn checkout_workspace(
-    session_id: &str,
-    project_id: &str,
-    ref_name: &str,
-    workspace_id: &str,
-) -> PyResult<String> {
-    let s = state()?;
-    let bare = s.root.join("projects").join(format!("{project_id}.git"));
-    let ws_id = if workspace_id.is_empty() {
-        uuid::Uuid::new_v4().to_string()
-    } else {
-        workspace_id.to_string()
-    };
-    let wt = s.root.join("workspaces").join(&ws_id);
-    let ref_final = if ref_name.is_empty() {
-        "main"
-    } else {
-        ref_name
-    };
-    // Re-bind existing worktree after process restart (path already populated).
-    if !wt.exists() {
-        s.git.add_worktree(&bare, &wt, ref_final).map_err(map_err)?;
-    }
-    let ws = match s.sessions.get_workspace(&ws_id) {
-        Ok(existing) => existing,
-        Err(_) => s
-            .sessions
-            .create_workspace(&ws_id, project_id, ref_final, &wt.to_string_lossy())
-            .map_err(map_err)?,
-    };
-    s.sessions
-        .set_active_workspace(session_id, &ws_id)
-        .map_err(map_err)?;
-    s.adr.bind_worktree(&ws_id, wt.clone());
-    s.flows.bind_worktree(&ws_id, wt.clone());
-    let docs = wt.join("docs");
-    let _ = ensure_docs_layout(&docs);
-    s.docs_by_ws.lock().insert(ws_id.clone(), docs);
-    Ok(serde_json::to_string(&ws).unwrap())
-}
-
-#[pyfunction]
 #[allow(clippy::too_many_arguments)]
 fn upsert_element(
-    workspace_id: &str,
     id: &str,
     kind: &str,
     name: &str,
@@ -321,7 +239,7 @@ fn upsert_element(
     }
     let el = Element {
         id: id.into(),
-        workspace_id: workspace_id.into(),
+        workspace_id: WS.into(),
         kind: kind_parsed,
         parent_id: parent_id.map(str::to_string),
         name: name.into(),
@@ -331,7 +249,7 @@ fn upsert_element(
         members,
     };
     if let Some(ref pid) = el.parent_id {
-        let parent = s.model.get_element(workspace_id, pid).ok();
+        let parent = s.model.get_element(WS, pid).ok();
         let problems = check_parent(&el, parent.as_ref());
         if !problems.is_empty() {
             return Err(pyo3::exceptions::PyValueError::new_err(
@@ -355,12 +273,11 @@ fn upsert_element(
         }
     }
     let s2 = s.clone();
-    let ws = workspace_id.to_string();
     let out = s
         .queue
         .submit(move || {
             let saved = s2.model.upsert_element(el)?;
-            let _ = persist_model_toml(&s2, &ws);
+            let _ = persist_model_toml(&s2);
             Ok(serde_json::to_string(&saved).unwrap())
         })
         .map_err(map_err)?;
@@ -369,19 +286,15 @@ fn upsert_element(
 
 #[pyfunction]
 fn upsert_relationship(
-    workspace_id: &str,
     id: &str,
     from_id: &str,
     to_id: &str,
     description: Option<&str>,
 ) -> PyResult<String> {
     let s = state()?;
-    let from = s
-        .model
-        .get_element(workspace_id, from_id)
-        .map_err(map_err)?;
-    let to = s.model.get_element(workspace_id, to_id).map_err(map_err)?;
-    let adrs = s.adr.list_decisions(workspace_id).map_err(map_err)?;
+    let from = s.model.get_element(WS, from_id).map_err(map_err)?;
+    let to = s.model.get_element(WS, to_id).map_err(map_err)?;
+    let adrs = s.adr.list_decisions(WS).map_err(map_err)?;
     let problems = check_relationship(&from, &to, id, &adrs);
     if blocks_write(&problems, &adrs) {
         let msg = problems
@@ -399,19 +312,18 @@ fn upsert_relationship(
     }
     let rel = Relationship {
         id: id.into(),
-        workspace_id: workspace_id.into(),
+        workspace_id: WS.into(),
         from_id: from_id.into(),
         to_id: to_id.into(),
         description: description.map(str::to_string),
         technology: None,
     };
     let s2 = s.clone();
-    let ws = workspace_id.to_string();
     let out = s
         .queue
         .submit(move || {
             let saved = s2.model.upsert_relationship(rel)?;
-            let _ = persist_model_toml(&s2, &ws);
+            let _ = persist_model_toml(&s2);
             Ok(serde_json::to_string(&saved).unwrap())
         })
         .map_err(map_err)?;
@@ -419,28 +331,27 @@ fn upsert_relationship(
 }
 
 #[pyfunction]
-fn delete_relationship(workspace_id: &str, id: &str) -> PyResult<String> {
+fn delete_relationship(id: &str) -> PyResult<String> {
     let s = state()?;
     let s2 = s.clone();
-    let ws = workspace_id.to_string();
     let rid = id.to_string();
     let out = s
         .queue
         .submit(move || {
-            s2.model.delete_relationship(&ws, &rid)?;
-            let _ = persist_model_toml(&s2, &ws);
-            Ok(json!({ "deleted": rid, "workspace_id": ws }).to_string())
+            s2.model.delete_relationship(WS, &rid)?;
+            let _ = persist_model_toml(&s2);
+            Ok(json!({ "deleted": rid }).to_string())
         })
         .map_err(map_err)?;
     Ok(out)
 }
 
 #[pyfunction]
-fn get_model(workspace_id: &str) -> PyResult<String> {
+fn get_model() -> PyResult<String> {
     let s = state()?;
-    let elements = s.model.list_elements(workspace_id).map_err(map_err)?;
-    let relationships = s.model.list_relationships(workspace_id).map_err(map_err)?;
-    let decisions = s.adr.list_decisions(workspace_id).map_err(map_err)?;
+    let elements = s.model.list_elements(WS).map_err(map_err)?;
+    let relationships = s.model.list_relationships(WS).map_err(map_err)?;
+    let decisions = s.adr.list_decisions(WS).map_err(map_err)?;
     Ok(
         json!({ "elements": elements, "relationships": relationships, "decisions": decisions })
             .to_string(),
@@ -448,12 +359,12 @@ fn get_model(workspace_id: &str) -> PyResult<String> {
 }
 
 #[pyfunction]
-fn validate_workspace(workspace_id: &str) -> PyResult<String> {
+fn validate_workspace() -> PyResult<String> {
     let s = state()?;
     let snap = ModelSnapshot {
-        elements: s.model.list_elements(workspace_id).map_err(map_err)?,
-        relationships: s.model.list_relationships(workspace_id).map_err(map_err)?,
-        decisions: s.adr.list_decisions(workspace_id).map_err(map_err)?,
+        elements: s.model.list_elements(WS).map_err(map_err)?,
+        relationships: s.model.list_relationships(WS).map_err(map_err)?,
+        decisions: s.adr.list_decisions(WS).map_err(map_err)?,
     };
     let mut problems = validate_model(&snap);
     problems.extend(scan_model(
@@ -465,13 +376,12 @@ fn validate_workspace(workspace_id: &str) -> PyResult<String> {
 }
 
 #[pyfunction]
-fn upsert_adr(workspace_id: &str, adr_json: &str, commit: bool) -> PyResult<String> {
+fn upsert_adr(adr_json: &str, commit: bool) -> PyResult<String> {
     let s = state()?;
     let mut d: Decision = serde_json::from_str(adr_json)
         .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
-    d.workspace_id = workspace_id.into();
+    d.workspace_id = WS.into();
     let s2 = s.clone();
-    let ws = workspace_id.to_string();
     let out = s
         .queue
         .submit(move || {
@@ -482,7 +392,7 @@ fn upsert_adr(workspace_id: &str, adr_json: &str, commit: bool) -> PyResult<Stri
                     .trim_end_matches('/'),
             )
             .unwrap_or_else(|_| "https://c4.example.com".into());
-            let view_url = format!("{base}/view/{ws}/adrs/{}", d.id);
+            let view_url = format!("{base}/view/adrs/{}", d.id);
             Ok(json!({ "decision": d, "commit_id": cid, "view_url": view_url }).to_string())
         })
         .map_err(map_err)?;
@@ -490,24 +400,20 @@ fn upsert_adr(workspace_id: &str, adr_json: &str, commit: bool) -> PyResult<Stri
 }
 
 #[pyfunction]
+#[pyo3(signature = (id, status, reason=None, superseded_by_id=None, commit=true, process_token=None))]
 fn set_adr_status(
-    workspace_id: &str,
     id: &str,
     status: &str,
     reason: Option<&str>,
     superseded_by_id: Option<&str>,
     commit: bool,
+    process_token: Option<&str>,
 ) -> PyResult<String> {
-    // Process gate: require token unless unset (dev/local).
+    // Process gate: require token unless unset (dev/local). Token is an
+    // argument — never shared via process-global env (unsafe under concurrent HTTP).
     if let Ok(expected) = std::env::var("ARCHITECT_C4_PROCESS_TOKEN") {
-        if expected.is_empty() {
-            // empty env = allow (tests)
-        } else {
-            let provided = std::env::var("ARCHITECT_C4_PROCESS_TOKEN_PRESENT")
-                .ok()
-                .or_else(|| std::env::var("ARCHITECT_C4_CALLER_PROCESS_TOKEN").ok());
-            // FastMCP passes token via env ARCHITECT_C4_CALLER_PROCESS_TOKEN from tool arg in Python
-            match provided {
+        if !expected.is_empty() {
+            match process_token {
                 Some(p) if p == expected => {}
                 _ => {
                     return Err(pyo3::exceptions::PyPermissionError::new_err(
@@ -520,7 +426,6 @@ fn set_adr_status(
     let s = state()?;
     let st = DecisionStatus::parse(status).map_err(map_err)?;
     let s2 = s.clone();
-    let ws = workspace_id.to_string();
     let id = id.to_string();
     let reason = reason.map(str::to_string);
     let superseded_by_id = superseded_by_id.map(str::to_string);
@@ -528,7 +433,7 @@ fn set_adr_status(
         .queue
         .submit(move || {
             let (d, cid) = s2.adr.set_decision_status(
-                &ws,
+                WS,
                 &id,
                 st,
                 reason.as_deref(),
@@ -542,9 +447,9 @@ fn set_adr_status(
 }
 
 #[pyfunction]
-fn get_adr(workspace_id: &str, id: &str) -> PyResult<String> {
+fn get_adr(id: &str) -> PyResult<String> {
     let s = state()?;
-    let d = s.adr.get_decision(workspace_id, id).map_err(map_err)?;
+    let d = s.adr.get_decision(WS, id).map_err(map_err)?;
     Ok(serde_json::to_string(&d).unwrap())
 }
 
@@ -553,11 +458,11 @@ fn require_base(base_url: &str) -> PyResult<String> {
 }
 
 #[pyfunction]
-fn get_overview_diagram(workspace_id: &str, base_url: &str) -> PyResult<String> {
+fn get_overview_diagram(base_url: &str) -> PyResult<String> {
     let s = state()?;
     let base = require_base(base_url)?;
-    let elements = s.model.list_elements(workspace_id).map_err(map_err)?;
-    let relationships = s.model.list_relationships(workspace_id).map_err(map_err)?;
+    let elements = s.model.list_elements(WS).map_err(map_err)?;
+    let relationships = s.model.list_relationships(WS).map_err(map_err)?;
     // V3: Context view shows projected edges (atom→system/external).
     let projected = project_relationships(&elements, &relationships, C4Layer::Context);
     let mermaid = overview_mermaid(&DiagramInput {
@@ -565,11 +470,10 @@ fn get_overview_diagram(workspace_id: &str, base_url: &str) -> PyResult<String> 
         relationships: &projected,
         base_url: &base,
     });
-    let view_url = format!("{base}/view/{workspace_id}?layer=context");
+    let view_url = format!("{base}/view?layer=context");
     Ok(json!({
         "format": "mermaid",
         "layer": "context",
-        "workspace_id": workspace_id,
         "view_url": view_url,
         "content": mermaid
     })
@@ -577,17 +481,12 @@ fn get_overview_diagram(workspace_id: &str, base_url: &str) -> PyResult<String> 
 }
 
 #[pyfunction]
-fn get_layer_diagram(
-    workspace_id: &str,
-    layer: &str,
-    parent_id: Option<&str>,
-    base_url: &str,
-) -> PyResult<String> {
+fn get_layer_diagram(layer: &str, parent_id: Option<&str>, base_url: &str) -> PyResult<String> {
     let s = state()?;
     let base = require_base(base_url)?;
     let layer = C4Layer::parse(layer).map_err(map_err)?;
-    let elements = s.model.list_elements(workspace_id).map_err(map_err)?;
-    let relationships = s.model.list_relationships(workspace_id).map_err(map_err)?;
+    let elements = s.model.list_elements(WS).map_err(map_err)?;
+    let relationships = s.model.list_relationships(WS).map_err(map_err)?;
     let projected = project_relationships(&elements, &relationships, layer);
     let mermaid = diagram_for_layer(
         &DiagramInput {
@@ -599,17 +498,13 @@ fn get_layer_diagram(
         parent_id,
     );
     let view_url = match parent_id {
-        Some(p) => format!(
-            "{base}/view/{workspace_id}?layer={}&parent={p}",
-            layer.as_str()
-        ),
-        None => format!("{base}/view/{workspace_id}?layer={}", layer.as_str()),
+        Some(p) => format!("{base}/view?layer={}&parent={p}", layer.as_str()),
+        None => format!("{base}/view?layer={}", layer.as_str()),
     };
     Ok(json!({
         "format": "mermaid",
         "layer": layer.as_str(),
         "parent_id": parent_id,
-        "workspace_id": workspace_id,
         "view_url": view_url,
         "content": mermaid
     })
@@ -618,7 +513,6 @@ fn get_layer_diagram(
 
 #[pyfunction]
 fn render_view_html(
-    workspace_id: &str,
     layer: &str,
     parent_id: Option<&str>,
     base_url: &str,
@@ -633,8 +527,8 @@ fn render_view_html(
     } else {
         C4Layer::parse(layer).map_err(map_err)?
     };
-    let elements = s.model.list_elements(workspace_id).map_err(map_err)?;
-    let relationships = s.model.list_relationships(workspace_id).map_err(map_err)?;
+    let elements = s.model.list_elements(WS).map_err(map_err)?;
+    let relationships = s.model.list_relationships(WS).map_err(map_err)?;
     // Layer Mermaid uses V3 projections; All Mermaid keeps atom edges (WASM bundles trunks).
     let projected = project_relationships(&elements, &relationships, layer_parsed);
     let mermaid = if view_mode == ViewMode::All {
@@ -674,10 +568,10 @@ fn render_view_html(
             .find(|e| e.id == pid)
             .and_then(|e| e.parent_id.as_deref())
     });
-    let adrs = s.adr.list_decisions(workspace_id).map_err(map_err)?;
-    let flows_n = s.flows.list_flows(workspace_id).map_err(map_err)?.len();
+    let adrs = s.adr.list_decisions(WS).map_err(map_err)?;
+    let flows_n = s.flows.list_flows(WS).map_err(map_err)?.len();
     Ok(view_html(
-        workspace_id,
+        WS,
         layer_parsed,
         parent_id,
         &mermaid,
@@ -693,15 +587,10 @@ fn render_view_html(
 }
 
 #[pyfunction]
-fn get_scene(
-    workspace_id: &str,
-    mode: &str,
-    layer: Option<&str>,
-    focus: Option<&str>,
-) -> PyResult<String> {
+fn get_scene(mode: &str, layer: Option<&str>, focus: Option<&str>) -> PyResult<String> {
     let s = state()?;
-    let elements = s.model.list_elements(workspace_id).map_err(map_err)?;
-    let relationships = s.model.list_relationships(workspace_id).map_err(map_err)?;
+    let elements = s.model.list_elements(WS).map_err(map_err)?;
+    let relationships = s.model.list_relationships(WS).map_err(map_err)?;
     Ok(scene_json_for_view(
         &elements,
         &relationships,
@@ -712,85 +601,30 @@ fn get_scene(
 }
 
 #[pyfunction]
-fn list_workspaces() -> PyResult<String> {
+fn render_adrs_html(base_url: &str) -> PyResult<String> {
     let s = state()?;
-    let mut rows = Vec::new();
-    for ws in s.sessions.list_workspaces(None).map_err(map_err)? {
-        let elements = s.model.list_elements(&ws.id).map(|v| v.len()).unwrap_or(0);
-        let relationships = s
-            .model
-            .list_relationships(&ws.id)
-            .map(|v| v.len())
-            .unwrap_or(0);
-        let adrs = s.adr.list_decisions(&ws.id).map(|v| v.len()).unwrap_or(0);
-        let flows = s.flows.list_flows(&ws.id).map(|v| v.len()).unwrap_or(0);
-        rows.push(json!({
-            "id": ws.id,
-            "project_id": ws.project_id,
-            "ref_name": ws.ref_name,
-            "status": ws.status,
-            "created_at": ws.created_at,
-            "elements": elements,
-            "relationships": relationships,
-            "adrs": adrs,
-            "flows": flows,
-        }));
-    }
-    Ok(serde_json::to_string(&rows).unwrap())
+    let base = require_base(base_url)?;
+    let adrs = s.adr.list_decisions(WS).map_err(map_err)?;
+    Ok(adrs_index_html(WS, &base, &adrs))
 }
 
 #[pyfunction]
-fn render_workspaces_html(base_url: &str) -> PyResult<String> {
+fn render_adr_html(adr_id: &str, base_url: &str) -> PyResult<String> {
     let s = state()?;
     let base = require_base(base_url)?;
-    let mut cards = Vec::new();
-    for ws in s.sessions.list_workspaces(None).map_err(map_err)? {
-        let elements = s.model.list_elements(&ws.id).map(|v| v.len()).unwrap_or(0);
-        let relationships = s
-            .model
-            .list_relationships(&ws.id)
-            .map(|v| v.len())
-            .unwrap_or(0);
-        let adrs = s.adr.list_decisions(&ws.id).map(|v| v.len()).unwrap_or(0);
-        let flows = s.flows.list_flows(&ws.id).map(|v| v.len()).unwrap_or(0);
-        cards.push(WorkspaceCard {
-            id: ws.id,
-            project_id: ws.project_id,
-            ref_name: ws.ref_name,
-            elements,
-            relationships,
-            adrs,
-            flows,
-        });
-    }
-    Ok(workspaces_index_html(&base, &cards))
+    let d = s.adr.get_decision(WS, adr_id).map_err(map_err)?;
+    Ok(adr_detail_html(WS, &base, &d))
 }
 
 #[pyfunction]
-fn render_adrs_html(workspace_id: &str, base_url: &str) -> PyResult<String> {
+fn list_adrs(base_url: &str) -> PyResult<String> {
     let s = state()?;
     let base = require_base(base_url)?;
-    let adrs = s.adr.list_decisions(workspace_id).map_err(map_err)?;
-    Ok(adrs_index_html(workspace_id, &base, &adrs))
-}
-
-#[pyfunction]
-fn render_adr_html(workspace_id: &str, adr_id: &str, base_url: &str) -> PyResult<String> {
-    let s = state()?;
-    let base = require_base(base_url)?;
-    let d = s.adr.get_decision(workspace_id, adr_id).map_err(map_err)?;
-    Ok(adr_detail_html(workspace_id, &base, &d))
-}
-
-#[pyfunction]
-fn list_adrs(workspace_id: &str, base_url: &str) -> PyResult<String> {
-    let s = state()?;
-    let base = require_base(base_url)?;
-    let adrs = s.adr.list_decisions(workspace_id).map_err(map_err)?;
+    let adrs = s.adr.list_decisions(WS).map_err(map_err)?;
     let rows: Vec<_> = adrs
         .into_iter()
         .map(|d| {
-            let view_url = format!("{base}/view/{workspace_id}/adrs/{}", d.id);
+            let view_url = format!("{base}/view/adrs/{}", d.id);
             json!({
                 "id": d.id,
                 "workspace_id": d.workspace_id,
@@ -816,13 +650,12 @@ fn list_adrs(workspace_id: &str, base_url: &str) -> PyResult<String> {
 }
 
 #[pyfunction]
-fn upsert_flow(workspace_id: &str, flow_json: &str, commit: bool) -> PyResult<String> {
+fn upsert_flow(flow_json: &str, commit: bool) -> PyResult<String> {
     let s = state()?;
     let mut f: Flow = serde_json::from_str(flow_json)
         .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
-    f.workspace_id = workspace_id.into();
+    f.workspace_id = WS.into();
     let s2 = s.clone();
-    let ws = workspace_id.to_string();
     let out = s
         .queue
         .submit(move || {
@@ -833,7 +666,7 @@ fn upsert_flow(workspace_id: &str, flow_json: &str, commit: bool) -> PyResult<St
                     .trim_end_matches('/'),
             )
             .unwrap_or_else(|_| "https://c4.example.com".into());
-            let view_url = format!("{base}/view/{ws}/flows/{}", f.id);
+            let view_url = format!("{base}/view/flows/{}", f.id);
             Ok(json!({ "flow": f, "commit_id": cid, "view_url": view_url }).to_string())
         })
         .map_err(map_err)?;
@@ -841,20 +674,20 @@ fn upsert_flow(workspace_id: &str, flow_json: &str, commit: bool) -> PyResult<St
 }
 
 #[pyfunction]
-fn get_flow(workspace_id: &str, id: &str) -> PyResult<String> {
+fn get_flow(id: &str) -> PyResult<String> {
     let s = state()?;
-    Ok(serde_json::to_string(&s.flows.get_flow(workspace_id, id).map_err(map_err)?).unwrap())
+    Ok(serde_json::to_string(&s.flows.get_flow(WS, id).map_err(map_err)?).unwrap())
 }
 
 #[pyfunction]
-fn list_flows(workspace_id: &str, base_url: &str) -> PyResult<String> {
+fn list_flows(base_url: &str) -> PyResult<String> {
     let s = state()?;
     let base = require_base(base_url)?;
-    let flows = s.flows.list_flows(workspace_id).map_err(map_err)?;
+    let flows = s.flows.list_flows(WS).map_err(map_err)?;
     let rows: Vec<_> = flows
         .into_iter()
         .map(|f| {
-            let view_url = format!("{base}/view/{workspace_id}/flows/{}", f.id);
+            let view_url = format!("{base}/view/flows/{}", f.id);
             json!({
                 "id": f.id,
                 "title": f.title,
@@ -873,29 +706,28 @@ fn list_flows(workspace_id: &str, base_url: &str) -> PyResult<String> {
 }
 
 #[pyfunction]
-fn delete_flow(workspace_id: &str, id: &str, commit: bool) -> PyResult<String> {
+fn delete_flow(id: &str, commit: bool) -> PyResult<String> {
     let s = state()?;
     let s2 = s.clone();
-    let ws = workspace_id.to_string();
     let id = id.to_string();
     let out = s
         .queue
         .submit(move || {
-            s2.flows.delete_flow(&ws, &id, commit)?;
-            Ok(json!({ "deleted": id, "workspace_id": ws }).to_string())
+            s2.flows.delete_flow(WS, &id, commit)?;
+            Ok(json!({ "deleted": id }).to_string())
         })
         .map_err(map_err)?;
     Ok(out)
 }
 
 #[pyfunction]
-fn get_flow_diagram(workspace_id: &str, id: &str, base_url: &str) -> PyResult<String> {
+fn get_flow_diagram(id: &str, base_url: &str) -> PyResult<String> {
     let s = state()?;
     let base = require_base(base_url)?;
-    let f = s.flows.get_flow(workspace_id, id).map_err(map_err)?;
-    let elements = s.model.list_elements(workspace_id).map_err(map_err)?;
+    let f = s.flows.get_flow(WS, id).map_err(map_err)?;
+    let elements = s.model.list_elements(WS).map_err(map_err)?;
     let content = flow_to_mermaid(&f, &elements);
-    let view_url = format!("{base}/view/{workspace_id}/flows/{}", f.id);
+    let view_url = format!("{base}/view/flows/{}", f.id);
     Ok(
         json!({ "format": "mermaid", "content": content, "view_url": view_url, "flow": f })
             .to_string(),
@@ -903,40 +735,33 @@ fn get_flow_diagram(workspace_id: &str, id: &str, base_url: &str) -> PyResult<St
 }
 
 #[pyfunction]
-fn render_flows_html(workspace_id: &str, base_url: &str) -> PyResult<String> {
+fn render_flows_html(base_url: &str) -> PyResult<String> {
     let s = state()?;
     let base = require_base(base_url)?;
-    let flows = s.flows.list_flows(workspace_id).map_err(map_err)?;
-    let adrs_n = s.adr.list_decisions(workspace_id).map_err(map_err)?.len();
-    Ok(flows_index_html(workspace_id, &base, &flows, adrs_n))
+    let flows = s.flows.list_flows(WS).map_err(map_err)?;
+    let adrs_n = s.adr.list_decisions(WS).map_err(map_err)?.len();
+    Ok(flows_index_html(WS, &base, &flows, adrs_n))
 }
 
 #[pyfunction]
-fn render_flow_html(workspace_id: &str, flow_id: &str, base_url: &str) -> PyResult<String> {
+fn render_flow_html(flow_id: &str, base_url: &str) -> PyResult<String> {
     let s = state()?;
     let base = require_base(base_url)?;
-    let f = s.flows.get_flow(workspace_id, flow_id).map_err(map_err)?;
-    let elements = s.model.list_elements(workspace_id).map_err(map_err)?;
-    let adrs_n = s.adr.list_decisions(workspace_id).map_err(map_err)?.len();
-    let flows_n = s.flows.list_flows(workspace_id).map_err(map_err)?.len();
-    Ok(flow_detail_html(
-        workspace_id,
-        &base,
-        &f,
-        &elements,
-        adrs_n,
-        flows_n,
-    ))
+    let f = s.flows.get_flow(WS, flow_id).map_err(map_err)?;
+    let elements = s.model.list_elements(WS).map_err(map_err)?;
+    let adrs_n = s.adr.list_decisions(WS).map_err(map_err)?.len();
+    let flows_n = s.flows.list_flows(WS).map_err(map_err)?.len();
+    Ok(flow_detail_html(WS, &base, &f, &elements, adrs_n, flows_n))
 }
 
 #[pyfunction]
-fn get_view_links(workspace_id: &str, base_url: &str) -> PyResult<String> {
+fn get_view_links(base_url: &str) -> PyResult<String> {
     let s = state()?;
-    let elements = s.model.list_elements(workspace_id).map_err(map_err)?;
-    let adrs = s.adr.list_decisions(workspace_id).map_err(map_err)?;
-    let mut v = view_links(workspace_id, base_url, &elements, &adrs)
+    let elements = s.model.list_elements(WS).map_err(map_err)?;
+    let adrs = s.adr.list_decisions(WS).map_err(map_err)?;
+    let mut v = view_links(WS, base_url, &elements, &adrs)
         .map_err(pyo3::exceptions::PyValueError::new_err)?;
-    let flows = s.flows.list_flows(workspace_id).map_err(map_err)?;
+    let flows = s.flows.list_flows(WS).map_err(map_err)?;
     let base = require_base(base_url)?;
     let flow_rows: Vec<_> = flows
         .iter()
@@ -945,7 +770,7 @@ fn get_view_links(workspace_id: &str, base_url: &str) -> PyResult<String> {
                 "id": f.id,
                 "title": f.title,
                 "kind": f.kind.as_str(),
-                "view_url": format!("{base}/view/{workspace_id}/flows/{}", f.id),
+                "view_url": format!("{base}/view/flows/{}", f.id),
             })
         })
         .collect();
@@ -958,11 +783,6 @@ fn get_view_links(workspace_id: &str, base_url: &str) -> PyResult<String> {
 #[pymodule]
 fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(init, m)?)?;
-    m.add_function(wrap_pyfunction!(create_session, m)?)?;
-    m.add_function(wrap_pyfunction!(get_session, m)?)?;
-    m.add_function(wrap_pyfunction!(list_sessions, m)?)?;
-    m.add_function(wrap_pyfunction!(create_project, m)?)?;
-    m.add_function(wrap_pyfunction!(checkout_workspace, m)?)?;
     m.add_function(wrap_pyfunction!(bind_docs, m)?)?;
     m.add_function(wrap_pyfunction!(upsert_element, m)?)?;
     m.add_function(wrap_pyfunction!(upsert_relationship, m)?)?;
@@ -978,8 +798,6 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(get_view_links, m)?)?;
     m.add_function(wrap_pyfunction!(render_view_html, m)?)?;
     m.add_function(wrap_pyfunction!(get_scene, m)?)?;
-    m.add_function(wrap_pyfunction!(list_workspaces, m)?)?;
-    m.add_function(wrap_pyfunction!(render_workspaces_html, m)?)?;
     m.add_function(wrap_pyfunction!(render_adrs_html, m)?)?;
     m.add_function(wrap_pyfunction!(render_adr_html, m)?)?;
     m.add_function(wrap_pyfunction!(upsert_flow, m)?)?;

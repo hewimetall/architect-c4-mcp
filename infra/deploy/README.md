@@ -1,13 +1,14 @@
 # Deploy templates
 
-Copy these files to your host and **replace every placeholder**:
+Скопируйте шаблоны на хост и замените плейсхолдеры:
 
 - `CURSOR.mcp.json` / `CURSOR.mcp.proxy.json` — `REPLACE_WITH_TOKEN_…`
 - `vmcp.toml` — `master_password_argon2` (`vmcp hash-password`)
-- `Caddyfile` / systemd — hostname and paths for **your** domain
-- Public base URL via `ARCHITECT_C4_PUBLIC_BASE=https://…`
+- `Caddyfile` / systemd — hostname и локальные пути для вашего домена
+- `ARCHITECT_C4_PUBLIC_BASE=https://…` — публичная база viewer
+- `ARCHITECT_C4_DOCS=/abs/product/docs` — единственный каталог данных продукта
 
-## architect-c4 env (V1 atom canon)
+## architect-c4 env
 
 ```bash
 sudo mkdir -p /etc/architect-c4
@@ -18,14 +19,12 @@ sudo systemctl daemon-reload
 sudo systemctl restart architect-c4
 ```
 
-Key vars in `/etc/architect-c4/env`:
+Ключевые переменные в `/etc/architect-c4/env`:
 
-| Var | V1 value | Notes |
+| Переменная | Значение | Комментарий |
 |-----|----------|--------|
-| `ARCHITECT_C4_ATOM_EDGES` | `1` | Writes: only code/external/person/system endpoints |
-| `ARCHITECT_C4_PUBLIC_BASE` | `https://your.domain` | Viewer absolute links |
-| `ARCHITECT_C4_DATA` | `/var/lib/architect-c4` | SQLite + worktrees |
+| `ARCHITECT_C4_DOCS` | `/abs/product/docs` | mount на `docs/` продукта |
+| `ARCHITECT_C4_PUBLIC_BASE` | `https://your.domain` | абсолютные ссылки viewer |
+| `ARCHITECT_C4_TRANSPORT` | `http` | streamable HTTP MCP |
 
-Opt out only while migrating legacy shell↔shell models: `ARCHITECT_C4_ATOM_EDGES=0`.
-
-Do not commit real tokens, password hashes, or SSH credentials.
+Не коммитьте реальные tokens, password hashes или SSH credentials.

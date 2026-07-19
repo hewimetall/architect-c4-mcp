@@ -13,7 +13,7 @@ from mcp_architect_client import McpClient, tool_call
 URL = "http://127.0.0.1:8766/mcp"
 WS = "ceph-rados-c4"
 GH = "https://github.com/ceph/ceph/blob/main/"
-DUMP = Path(__file__).resolve().parents[1] / "docs/research/rgw-usage-lsp-symbols.json"
+DUMP = Path(__file__).resolve().parents[1] / "fixtures/rgw-usage-lsp-symbols.json"
 NOTES: list[dict] = []
 
 

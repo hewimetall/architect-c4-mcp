@@ -215,7 +215,7 @@ pub fn render_scene(
         used = "canvas2d".into();
     }
 
-    // Allow contain-fit upscale (fill stage width); see docs/research/viewport-fit-resize.md
+    // Allow contain-fit upscale (fill stage width).
     let scale = view_scale.clamp(0.05, 16.0);
     let hover_e = if hover_edge_id.is_empty() {
         None

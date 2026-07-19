@@ -1,39 +1,29 @@
-# Example: Big Bank plc — Internet Banking System
+# Пример: Big Bank plc — Internet Banking System
 
-Canonical C4 walkthrough (Simon Brown / [c4model.com](https://c4model.com/)) built
-live in **architect-c4**.
+Канонический C4 walkthrough Simon Brown / [c4model.com](https://c4model.com/),
+который можно завести через MCP-инструменты architect-c4.
 
-## Sources
+## Источники
 
-- Official C4 site: <https://c4model.com/>
-- Interactive example: <https://c4model.com/example>
-- Case study article: [Applying the C4 Model to the Internet Banking System](https://www.cybermedian.com/a-comprehensive-step-by-step-case-study-applying-the-c4-model-to-the-internet-banking-system-big-bank-plc/)
-- Skills in this repo:
-  - `.cursor/skills/c4-architect-modeling/`
-  - `.cursor/skills/architecture-decision-records/`
+- Официальный сайт C4: <https://c4model.com/>
+- Интерактивный пример: <https://c4model.com/example>
+- Разбор: [Applying the C4 Model to the Internet Banking System](https://www.cybermedian.com/a-comprehensive-step-by-step-case-study-applying-the-c4-model-to-the-internet-banking-system-big-bank-plc/)
 
-## Live workspace
+## Viewer
 
-| Field | Value |
-|-------|-------|
-| workspace_id | `8c3b4690-cd3d-449f-8de0-484ae88829d0` |
-| project | `big-bank-plc` |
+- Context: <https://c4.example.com/view?layer=context>
+- Containers (IBS): <https://c4.example.com/view?layer=container&parent=ibs>
+- Components (API): <https://c4.example.com/view?layer=component&parent=api>
+- Code (Security): <https://c4.example.com/view?layer=code&parent=security>
+- ADRs: <https://c4.example.com/view/adrs>
 
-### Viewer links
-
-- Context: <https://c4.example.com/view/8c3b4690-cd3d-449f-8de0-484ae88829d0?layer=context>
-- Containers (IBS): <https://c4.example.com/view/8c3b4690-cd3d-449f-8de0-484ae88829d0?layer=container&parent=ibs>
-- Components (API): <https://c4.example.com/view/8c3b4690-cd3d-449f-8de0-484ae88829d0?layer=component&parent=api>
-- Code (Security): <https://c4.example.com/view/8c3b4690-cd3d-449f-8de0-484ae88829d0?layer=code&parent=security>
-- ADRs: <https://c4.example.com/view/8c3b4690-cd3d-449f-8de0-484ae88829d0/adrs>
-
-### Agent
+### Агент
 
 ```text
-get_view_links("8c3b4690-cd3d-449f-8de0-484ae88829d0")
+get_view_links()
 ```
 
-## What was modeled
+## Что смоделировано
 
 1. **Context** — Customer, Internet Banking System, Mainframe (external), E-mail (external)
 2. **Containers** — Web App, SPA, Mobile App, API Application, Database

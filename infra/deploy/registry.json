@@ -2,7 +2,7 @@
   "upstreams": [
     {
       "name": "architect-c4",
-      "description": "C4 model MCP: sessions, SQLite layers+revisions, ADR git fixation, validate, overview diagrams with links",
+      "description": "C4/ADR/Flow MCP sidecar: TOML under docs/, Rust write queue, Mermaid viewer",
       "transport": "http",
       "url": "http://127.0.0.1:8766/mcp",
       "sidecar_spec": "architect-c4.json",

@@ -18,7 +18,7 @@ from mcp_architect_client import McpClient, tool_call  # noqa: E402
 
 WORKSPACES = [
     "ceph-rados-c4",
-    "architect-c4-self",
+    "demo",
     "ceph-mcp-live",
     "ws-rgw-usage",
 ]

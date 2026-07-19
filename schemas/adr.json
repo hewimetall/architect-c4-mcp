@@ -19,10 +19,6 @@
       "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$",
       "description": "Stable ADR id (also used as docs/adr/{id}.json basename)."
     },
-    "workspace_id": {
-      "type": "string",
-      "description": "Filled by server; optional on upsert body."
-    },
     "title": { "type": "string", "minLength": 1, "maxLength": 200 },
     "status": {
       "type": "string",
@@ -42,7 +38,7 @@
     },
     "scope_element_id": {
       "type": ["string", "null"],
-      "description": "C4 element id or null for workspace-wide."
+      "description": "C4 element id or null for the whole model."
     },
     "context": { "type": "string", "minLength": 1, "maxLength": 2000 },
     "decision": { "type": "string", "minLength": 1, "maxLength": 2000 },

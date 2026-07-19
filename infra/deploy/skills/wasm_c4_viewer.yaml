@@ -3,21 +3,19 @@ description: |
   Use the WASM C4 canvas viewer (WebGPU detect → Canvas2D draw) and All-layers mode.
   Cascade: navigator.gpu → WebGPU path acknowledgement → Canvas2D render.
 arguments:
-  - name: workspace_id
-    required: true
   - name: focus
     required: false
     description: Container or system id to focus in mode=all
 template: |
-  Open architect-c4 WASM / All-layers view for {{workspace_id}}.
+  Open architect-c4 WASM / All-layers view.
 
   URLs:
-  - All layers (Mermaid): /view/{{workspace_id}}?mode=all
-  - All layers (WASM): /view/{{workspace_id}}?mode=all&renderer=wasm{{#if focus}}&focus={{focus}}{{/if}}
+  - All layers (Mermaid): /view?mode=all
+  - All layers (WASM): /view?mode=all&renderer=wasm{{#if focus}}&focus={{focus}}{{/if}}
   - Cascade note: preferred_backend() returns webgpu|canvas2d; draw uses Canvas2D until wgpu mesh lands.
 
   GraphQL batch:
   {
-    scene: architectC4 { getScene(workspaceId: "{{workspace_id}}", mode: "all"{{#if focus}}, focus: "{{focus}}"{{/if}}) { json } }
-    links: architectC4 { getViewLinks(workspaceId: "{{workspace_id}}") { json } }
+    scene: architectC4 { getScene(mode: "all"{{#if focus}}, focus: "{{focus}}"{{/if}}) { json } }
+    links: architectC4 { getViewLinks { json } }
   }
