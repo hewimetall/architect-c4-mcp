@@ -3225,7 +3225,12 @@ mod tests {
         assert!(m.starts_with("sequenceDiagram"));
         assert!(m.contains("participant u as User"));
         assert!(m.contains("u->>api: req"));
-        let html = flows_index_html("w", "https://c4.example.com", &[flow.clone()], 1);
+        let html = flows_index_html(
+            "w",
+            "https://c4.example.com",
+            std::slice::from_ref(&flow),
+            1,
+        );
         assert!(html.contains("Flows") && html.contains("f1"));
         let detail = flow_detail_html("w", "https://c4.example.com", &flow, &els, 1, 1);
         assert!(detail.contains("mermaid") && detail.contains("a1"));

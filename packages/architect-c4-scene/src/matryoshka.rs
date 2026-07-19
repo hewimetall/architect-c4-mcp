@@ -1610,7 +1610,7 @@ mod tests {
             technology: None,
         }];
         let g = build_matryoshka(&elements, &rels, None);
-        let mut kids: Vec<_> = g
+        let kids: Vec<_> = g
             .nodes
             .iter()
             .filter(|n| n.parent_id.as_deref() == Some("comp") && !n.group)
@@ -1636,7 +1636,7 @@ mod tests {
         let y_ov = a.y < b.y + b.h && b.y < a.y + a.h;
         let x_ov = a.x < b.x + b.w && b.x < a.x + a.w;
         assert!(
-            (y_ov && h_gap >= 0.0 && h_gap < 500.0) || (x_ov && v_gap >= 0.0 && v_gap < 500.0),
+            (y_ov && (0.0..500.0).contains(&h_gap)) || (x_ov && (0.0..500.0).contains(&v_gap)),
             "linked a/b should be geometric neighbors"
         );
     }
@@ -1804,7 +1804,7 @@ mod tests {
             technology: None,
         }];
         let g = build_matryoshka(&elements, &rels, None);
-        let mut kids: Vec<_> = g
+        let kids: Vec<_> = g
             .nodes
             .iter()
             .filter(|n| n.parent_id.as_deref() == Some("comp") && !n.group)
@@ -1884,7 +1884,7 @@ mod tests {
             };
             let y_ov = a.y < b.y + b.h && b.y < a.y + a.h;
             let x_ov = a.x < b.x + b.w && b.x < a.x + a.w;
-            (y_ov && h_gap >= 0.0 && h_gap < 400.0) || (x_ov && v_gap >= 0.0 && v_gap < 400.0)
+            (y_ov && (0.0..400.0).contains(&h_gap)) || (x_ov && (0.0..400.0).contains(&v_gap))
         };
         assert!(
             near(by["c1"], by["c2"]),

@@ -31,7 +31,10 @@ pub struct Placed {
 pub struct EmbedResult {
     pub shape: ShapeKind,
     pub placed: Vec<Placed>,
+    /// Bounding box of the packing (used by callers / tests).
+    #[allow(dead_code)]
     pub width: f64,
+    #[allow(dead_code)]
     pub height: f64,
     pub cost: f64,
 }
