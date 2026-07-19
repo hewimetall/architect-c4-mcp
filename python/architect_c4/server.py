@@ -222,12 +222,9 @@ def set_adr_status(
     When ``ARCHITECT_C4_PROCESS_TOKEN`` is set, ``process_token`` must match.
     """
     _ensure_init()
-    if process_token is not None:
-        os.environ["ARCHITECT_C4_CALLER_PROCESS_TOKEN"] = process_token
-    try:
-        return _j(native.set_adr_status(id, status, reason, superseded_by_id, commit))
-    finally:
-        os.environ.pop("ARCHITECT_C4_CALLER_PROCESS_TOKEN", None)
+    return _j(
+        native.set_adr_status(id, status, reason, superseded_by_id, commit, process_token)
+    )
 
 
 @mcp.tool()

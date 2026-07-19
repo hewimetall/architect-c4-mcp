@@ -79,6 +79,18 @@ impl FlowService {
         Ok(())
     }
 
+    /// Drop in-memory flow index for a workspace (sidecar rebind). Does not touch disk.
+    pub fn clear_workspace(&self, workspace_id: &str) -> Result<(), DomainError> {
+        self.conn
+            .lock()
+            .execute(
+                "DELETE FROM flows WHERE workspace_id=?1",
+                params![workspace_id],
+            )
+            .map_err(map_sql)?;
+        Ok(())
+    }
+
     fn worktree(&self, workspace_id: &str) -> Result<PathBuf, DomainError> {
         self.worktrees
             .lock()

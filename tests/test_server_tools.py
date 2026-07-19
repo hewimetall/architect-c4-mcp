@@ -66,7 +66,7 @@ def test_native_bind_and_adr_flow(docs: Path):
         )
     )
     assert adr["decision"]["path"].endswith(".toml")
-    native.set_adr_status("0001-use-toml", "accepted", None, None, True)
+    native.set_adr_status("0001-use-toml", "accepted", None, None, True, None)
     assert (docs / "adr" / "0001-use-toml.toml").is_file()
     assert (docs / "model.toml").is_file()
     v2 = json.loads(native.validate_workspace())
@@ -497,3 +497,23 @@ def test_no_workspace_public_api():
     assert not hasattr(server, "list_workspaces")
     assert not hasattr(server, "create_session")
     assert "workspace-id" not in server._apply_cli_env.__doc__
+
+
+def test_rebind_clears_stale_model(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("ARCHITECT_C4_DATA", str(tmp_path / "data"))
+    if hasattr(server._ensure_init, "_done"):
+        delattr(server._ensure_init, "_done")
+    a = tmp_path / "a" / "docs"
+    b = tmp_path / "b" / "docs"
+    a.mkdir(parents=True)
+    b.mkdir(parents=True)
+    _git_init(tmp_path / "a")
+    _git_init(tmp_path / "b")
+    native.init(str(tmp_path / "data"))
+    server._ensure_init._done = True  # type: ignore[attr-defined]
+    server.bind_docs(str(a))
+    server.upsert_element("only-in-a", "software_system", "A", description="d")
+    assert any(e["id"] == "only-in-a" for e in server.get_model()["elements"])
+    server.bind_docs(str(b))
+    ids = {e["id"] for e in server.get_model()["elements"]}
+    assert "only-in-a" not in ids

@@ -139,6 +139,11 @@ fn bind_docs_inner(
     s.flows.bind_worktree(WS, repo_root);
     *s.docs_dir.lock() = Some(docs_dir.clone());
 
+    // Rebind must not merge with a previous docs tree (single in-memory WS).
+    s.model.clear_workspace(WS)?;
+    s.adr.clear_workspace(WS)?;
+    s.flows.clear_workspace(WS)?;
+
     // Load model.toml into memory index
     let model_file = read_model_toml(&docs_dir.join("model.toml"))
         .map_err(architect_c4_domain::DomainError::Message)?;
@@ -395,23 +400,20 @@ fn upsert_adr(adr_json: &str, commit: bool) -> PyResult<String> {
 }
 
 #[pyfunction]
+#[pyo3(signature = (id, status, reason=None, superseded_by_id=None, commit=true, process_token=None))]
 fn set_adr_status(
     id: &str,
     status: &str,
     reason: Option<&str>,
     superseded_by_id: Option<&str>,
     commit: bool,
+    process_token: Option<&str>,
 ) -> PyResult<String> {
-    // Process gate: require token unless unset (dev/local).
+    // Process gate: require token unless unset (dev/local). Token is an
+    // argument — never shared via process-global env (unsafe under concurrent HTTP).
     if let Ok(expected) = std::env::var("ARCHITECT_C4_PROCESS_TOKEN") {
-        if expected.is_empty() {
-            // empty env = allow (tests)
-        } else {
-            let provided = std::env::var("ARCHITECT_C4_PROCESS_TOKEN_PRESENT")
-                .ok()
-                .or_else(|| std::env::var("ARCHITECT_C4_CALLER_PROCESS_TOKEN").ok());
-            // FastMCP passes token via env ARCHITECT_C4_CALLER_PROCESS_TOKEN from tool arg in Python
-            match provided {
+        if !expected.is_empty() {
+            match process_token {
                 Some(p) if p == expected => {}
                 _ => {
                     return Err(pyo3::exceptions::PyPermissionError::new_err(

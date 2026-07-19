@@ -1035,7 +1035,6 @@ pub fn view_html(
     let renderer_label = if use_wasm { "WASM" } else { "Mermaid" };
     let top_nav = format!(
         r#"<nav class="top-tabs" aria-label="Primary">
-      <a class="tab" href="{base}/view/">Projects</a>
       <a class="tab{diagrams_active}" href="{base}/view?layer=context">Diagrams</a>
       <a class="tab{all_active}" href="{base}/view?mode=all&amp;renderer=wasm{focus_q}">All</a>
       <a class="tab" href="{base}/view/flows">Flows ({nf})</a>
@@ -2236,7 +2235,7 @@ pub fn workspaces_index_html(base_url: &str, cards: &[WorkspaceCard]) -> String 
       <div class="mono">{n} workspace(s) · architect-c4</div>
     </div>
     <nav class="top-tabs" aria-label="Primary">
-      <a class="tab active" href="{base}/view/">Projects</a>
+      <a class="tab" href="{base}/view?layer=context">Diagrams</a>
     </nav>
   </header>
   <main>
@@ -2313,7 +2312,6 @@ pub fn adrs_index_html(_workspace_id: &str, base_url: &str, decisions: &[Decisio
       <div class="mono">{n} ADR(s)</div>
     </div>
     <nav class="top-tabs" aria-label="Primary">
-      <a class="tab" href="{base}/view/">Projects</a>
       <a class="tab" href="{base}/view?layer=context">Diagrams</a>
       <a class="tab" href="{base}/view?mode=all&amp;renderer=wasm">All</a>
       <a class="tab" href="{base}/view/flows">Flows</a>
@@ -2439,7 +2437,6 @@ pub fn adr_detail_html(_workspace_id: &str, base_url: &str, decision: &Decision)
   <header class="topbar">
     <div>
       <nav class="top-tabs" aria-label="Primary" style="margin-bottom:.45rem;display:inline-flex">
-        <a class="tab" href="{base}/view/">Projects</a>
         <a class="tab" href="{base}/view?layer=context">Diagrams</a>
         <a class="tab" href="{base}/view?mode=all&amp;renderer=wasm">All</a>
         <a class="tab" href="{base}/view/flows">Flows</a>
@@ -2822,7 +2819,6 @@ pub fn flows_index_html(
       <div class="mono">{n} flow(s)</div>
     </div>
     <nav class="top-tabs" aria-label="Primary">
-      <a class="tab" href="{base}/view/">Projects</a>
       <a class="tab" href="{base}/view?layer=context">Diagrams</a>
       <a class="tab" href="{base}/view?mode=all&amp;renderer=wasm">All</a>
       <a class="tab active" href="{base}/view/flows">Flows ({n})</a>
@@ -2948,7 +2944,6 @@ pub fn flow_detail_html(
       </div>
     </div>
     <nav class="top-tabs" aria-label="Primary">
-      <a class="tab" href="{base}/view/">Projects</a>
       <a class="tab" href="{base}/view?layer=context">Diagrams</a>
       <a class="tab" href="{base}/view/flows">Flows ({nf})</a>
       <a class="tab" href="{base}/view/adrs">ADRs ({na})</a>
@@ -3045,8 +3040,8 @@ mod tests {
         );
         assert!(html.contains("Projects"));
         assert!(html.contains(">ceph<"));
-        assert!(html.contains("/view/ceph-rados-c4?mode=all"));
-        assert!(html.contains("/view/architect-c4-self?layer=context"));
+        assert!(html.contains("/view?mode=all"));
+        assert!(html.contains("/view?layer=context"));
         assert!(html.contains("10</strong> elements"));
     }
 
@@ -3414,7 +3409,7 @@ mod tests {
         };
         let html = adrs_index_html("w", "https://c4.example.com", std::slice::from_ref(&d));
         assert!(html.contains("Use Redis"));
-        assert!(html.contains("/view/w/adrs/adr-1"));
+        assert!(html.contains("/view/adrs/adr-1"));
         assert!(html.contains("legend-panel"));
         assert!(html.contains("Decision status"));
         assert!(html.contains("--accent: #4f46e5"));
@@ -3428,7 +3423,7 @@ mod tests {
         assert!(detail.contains("top-tabs"));
         assert!(detail.contains("Diagrams"));
         assert!(detail.contains("Related flows"));
-        assert!(detail.contains("/view/w/flows/rgw-usage-record-on-request"));
+        assert!(detail.contains("/view/flows/rgw-usage-record-on-request"));
     }
 
     #[test]
@@ -3850,15 +3845,15 @@ mod tests {
         let v = view_links("w", "https://c4.example.com", &els, &[d]).unwrap();
         assert_eq!(
             v["context_url"],
-            "https://c4.example.com/view/w?layer=context"
+            "https://c4.example.com/view?layer=context"
         );
         assert_eq!(
             v["containers"][0]["component_url"],
-            "https://c4.example.com/view/w?layer=component&parent=api"
+            "https://c4.example.com/view?layer=component&parent=api"
         );
         assert_eq!(
             v["adrs"][0]["view_url"],
-            "https://c4.example.com/view/w/adrs/adr-1"
+            "https://c4.example.com/view/adrs/adr-1"
         );
         assert!(view_links("w", "javascript:x", &els, &[]).is_err());
     }

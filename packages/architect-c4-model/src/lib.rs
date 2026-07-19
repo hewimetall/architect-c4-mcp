@@ -70,6 +70,22 @@ impl SqliteModelStore {
         );
         Ok(())
     }
+
+    /// Drop all elements/relationships for a workspace (sidecar rebind).
+    pub fn clear_workspace(&self, workspace_id: &str) -> Result<(), DomainError> {
+        let conn = self.conn.lock();
+        conn.execute(
+            "DELETE FROM relationships WHERE workspace_id=?1",
+            params![workspace_id],
+        )
+        .map_err(map_sql)?;
+        conn.execute(
+            "DELETE FROM elements WHERE workspace_id=?1",
+            params![workspace_id],
+        )
+        .map_err(map_sql)?;
+        Ok(())
+    }
 }
 
 impl ElementExistsPort for SqliteModelStore {

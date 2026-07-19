@@ -411,6 +411,18 @@ impl AdrService {
         Self::validate_document(&decision, false)?;
         self.persist(decision, false)
     }
+
+    /// Drop in-memory ADR index for a workspace (sidecar rebind). Does not touch disk.
+    pub fn clear_workspace(&self, workspace_id: &str) -> Result<(), DomainError> {
+        self.conn
+            .lock()
+            .execute(
+                "DELETE FROM decisions WHERE workspace_id=?1",
+                params![workspace_id],
+            )
+            .map_err(map_sql)?;
+        Ok(())
+    }
 }
 
 impl AdrPort for AdrService {
