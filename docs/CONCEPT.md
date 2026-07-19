@@ -80,7 +80,7 @@ docs/
 **Сценарий:**
 
 ```text
-старт: uvx architect-c4 --docs /path/to/docs
+старт: uvx architect-c4-mcp --docs /path/to/docs
 → элементы и связи
 → validate_model
 → ADR / flow
@@ -154,7 +154,7 @@ services:
 ## CI
 
 - push/PR: pytest, `cargo test`, lint, сборка Docker  
-- tag `v*`: coverage ≥ 93% (py+rust) → PyPI (`architect-c4` wheels) + GitHub Release + GHCR  
+- tag `v*`: coverage ≥ 93% (py+rust) → PyPI (`architect-c4-mcp` wheels) + GitHub Release + GHCR  
 
 Обязательные тесты: TOML round-trip ADR/flow, очередь сериализует запись, bind на `docs/`, список промптов.
 

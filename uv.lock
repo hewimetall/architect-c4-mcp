@@ -52,8 +52,8 @@ wheels = [
 ]
 
 [[package]]
-name = "architect-c4"
-version = "0.3.1"
+name = "architect-c4-mcp"
+version = "0.3.2"
 source = { editable = "." }
 dependencies = [
     { name = "fastmcp", extra = ["tasks"] },

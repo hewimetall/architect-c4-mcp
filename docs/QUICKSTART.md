@@ -5,7 +5,7 @@
 Нужен Python 3.12+ и [uv](https://github.com/astral-sh/uv) (или pip). **Rust не нужен.**
 
 ```bash
-uvx architect-c4 \
+uvx architect-c4-mcp \
   --docs /abs/path/to/product/docs
 ```
 
@@ -14,15 +14,15 @@ uvx architect-c4 \
 Или поставить CLI в PATH:
 
 ```bash
-uv tool install architect-c4
-# либо: pip install architect-c4
-architect-c4 --docs /abs/path/to/product/docs
+uv tool install architect-c4-mcp
+# либо: pip install architect-c4-mcp
+architect-c4-mcp --docs /abs/path/to/product/docs
 ```
 
 HTTP:
 
 ```bash
-uvx architect-c4 \
+uvx architect-c4-mcp \
   --docs /abs/path/to/product/docs \
   --transport http --host 127.0.0.1 --port 8766
 # MCP:  http://127.0.0.1:8766/mcp
@@ -47,7 +47,7 @@ docs/flows/*.toml
     "architect-c4": {
       "command": "uvx",
       "args": [
-        "architect-c4",
+        "architect-c4-mcp",
         "--docs", "/ABS/product/docs",
         "--public-base", "https://c4.example.com"
       ]
@@ -56,9 +56,7 @@ docs/flows/*.toml
 }
 ```
 
-Пакет: https://pypi.org/project/architect-c4/
-
-> Пока релиза на PyPI нет — сделайте tag `v*` после настройки Trusted Publisher (см. [PUBLISH.md](./PUBLISH.md)). Альтернатива без PyPI: Docker ниже.
+Пакет: https://pypi.org/project/architect-c4-mcp/
 
 ## Docker (тоже без исходников)
 
@@ -84,7 +82,7 @@ cd architect-c4-mcp
 uv sync --extra dev
 uv run maturin develop
 export ARCHITECT_C4_DOCS=/abs/path/to/product/docs
-uv run architect-c4
+uv run architect-c4-mcp
 ```
 
 ## Промпты агента

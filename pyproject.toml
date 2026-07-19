@@ -3,8 +3,8 @@ requires = ["maturin>=1.8,<2"]
 build-backend = "maturin"
 
 [project]
-name = "architect-c4"
-version = "0.3.1"
+name = "architect-c4-mcp"
+version = "0.3.2"
 description = "C4 architecture MCP sidecar — TOML under docs/, Rust write queue"
 requires-python = ">=3.12"
 readme = "README.md"
@@ -42,6 +42,7 @@ dev = [
 ]
 
 [project.scripts]
+architect-c4-mcp = "architect_c4.server:main"
 architect-c4 = "architect_c4.server:main"
 
 [tool.maturin]

@@ -194,7 +194,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/architect-c4
+      url: https://pypi.org/p/architect-c4-mcp
     permissions:
       id-token: write
     steps:
