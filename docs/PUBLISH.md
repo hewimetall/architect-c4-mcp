@@ -1,6 +1,6 @@
 # Публикация на PyPI
 
-Пакет: **`architect-c4`** (готовые wheels + sdist).  
+Пакет: **`architect-c4-mcp`** (готовые wheels + sdist).  
 Триггер: git tag `v*` → workflow `.github/workflows/release.yml`  
 (сначала job `quality`: pytest + cargo + coverage ≥93%, затем wheels / PyPI / GHCR).
 
@@ -8,6 +8,7 @@
 
 1. Аккаунт на https://pypi.org (для нового имени — «pending publisher» до первого upload).
 2. PyPI → **Publishing** → **Add a new pending publisher** (или Settings проекта после первого релиза):
+   - **PyPI project name:** `architect-c4-mcp` (должно совпадать с `[project].name`)
    - Owner: `hewimetall`
    - Repository: `architect-c4-mcp`
    - Workflow: `release.yml`
@@ -18,9 +19,9 @@
 ## Релиз
 
 ```bash
-# версия в pyproject.toml и Cargo crates = 0.3.1 → тег v0.3.1
-git tag v0.3.1
-git push origin v0.3.1
+# версия в pyproject.toml и Cargo crates = 0.3.2 → тег v0.3.2
+git tag v0.3.2
+git push origin v0.3.2
 ```
 
 Workflow соберёт manylinux/musllinux/macOS/Windows wheels + sdist, зальёт на PyPI, сделает GitHub Release и пушнет образ в GHCR.
@@ -28,15 +29,16 @@ Workflow соберёт manylinux/musllinux/macOS/Windows wheels + sdist, зал
 ## Проверка после релиза
 
 ```bash
-uvx architect-c4==0.3.1 --docs /path/to/docs
+uvx architect-c4-mcp==0.3.2 --docs /path/to/docs
 # или
-pip install architect-c4==0.3.1
-architect-c4 --docs /path/to/docs
+pip install architect-c4-mcp==0.3.2
+architect-c4-mcp --docs /path/to/docs
+# алиас CLI: architect-c4
 ```
 
 Локально без PyPI (smoke wheel):
 
 ```bash
 uv run maturin build --release --out dist
-uvx --from ./dist/architect_c4-*.whl architect-c4 --docs /path/to/docs
+uvx --from ./dist/architect_c4_mcp-*.whl architect-c4-mcp --docs /path/to/docs
 ```

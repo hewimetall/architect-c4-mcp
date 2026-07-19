@@ -19,24 +19,24 @@ MCP-сервис рядом с вашим git-репозиторием: аген
 Нужен Python 3.12+. Rust не требуется.
 
 ```bash
-uvx architect-c4 --docs /abs/path/to/product/docs
+uvx architect-c4-mcp --docs /abs/path/to/product/docs
 ```
 
 или
 
 ```bash
-uv tool install architect-c4
-architect-c4 --docs /abs/path/to/product/docs
+uv tool install architect-c4-mcp
+architect-c4-mcp --docs /abs/path/to/product/docs
 ```
 
-пакет: https://pypi.org/project/architect-c4/
+пакет: https://pypi.org/project/architect-c4-mcp/
 
-Пока релиза на PyPI нет — см. [docs/PUBLISH.md](docs/PUBLISH.md). Альтернатива: образ `ghcr.io/hewimetall/architect-c4-mcp`.
+Альтернатива: образ `ghcr.io/hewimetall/architect-c4-mcp`.
 
 ## Быстрый старт
 
 ```bash
-uvx architect-c4 \
+uvx architect-c4-mcp \
   --docs /abs/path/to/product/docs \
   --public-base https://c4.example.com
 ```
@@ -46,7 +46,7 @@ uvx architect-c4 \
 HTTP:
 
 ```bash
-uvx architect-c4 \
+uvx architect-c4-mcp \
   --docs /abs/path/to/product/docs \
   --transport http --host 127.0.0.1 --port 8766
 ```
@@ -62,7 +62,7 @@ uvx architect-c4 \
     "architect-c4": {
       "command": "uvx",
       "args": [
-        "architect-c4",
+        "architect-c4-mcp",
         "--docs", "/ABS/product/docs",
         "--public-base", "https://c4.example.com"
       ]
@@ -101,7 +101,7 @@ git clone https://github.com/hewimetall/architect-c4-mcp.git
 cd architect-c4-mcp
 uv sync --extra dev
 uv run maturin develop
-uv run architect-c4 --docs ./examples/docs
+uv run architect-c4-mcp --docs ./examples/docs
 ```
 
 ## CI
