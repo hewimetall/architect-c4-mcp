@@ -831,4 +831,101 @@ mod tests {
         assert!(d.decision.contains("legacy"));
         assert!(d.path.ends_with(".toml"));
     }
+
+    #[test]
+    fn clear_workspace_and_import_from_disk() {
+        let (_dir, adr, _) = setup();
+        adr.upsert_decision(sample(DecisionStatus::Draft), false)
+            .unwrap();
+        assert_eq!(adr.list_decisions("w").unwrap().len(), 1);
+        adr.clear_workspace("w").unwrap();
+        assert!(adr.list_decisions("w").unwrap().is_empty());
+
+        let (d, cid) = adr
+            .import_from_disk(sample(DecisionStatus::Accepted))
+            .unwrap();
+        assert_eq!(d.status, DecisionStatus::Accepted);
+        assert!(cid.is_none());
+        assert_eq!(
+            adr.get_decision("w", "0001-use-sqlite").unwrap().title,
+            "Use SQLite"
+        );
+    }
+
+    #[test]
+    fn validate_document_edge_cases() {
+        let (_dir, adr, _) = setup();
+        let mut d = sample(DecisionStatus::Draft);
+        d.workspace_id.clear();
+        assert!(adr.upsert_decision(d.clone(), false).is_err());
+
+        d = sample(DecisionStatus::Draft);
+        d.title = "t".repeat(201);
+        assert!(adr.upsert_decision(d.clone(), false).is_err());
+
+        d = sample(DecisionStatus::Draft);
+        d.policy = Some(AdrPolicy {
+            mode: PolicyMode::Enforce,
+            forbid: (0..33)
+                .map(|i| AdrForbidRule {
+                    from_kind: ElementKind::Person,
+                    to_kind: ElementKind::Code,
+                    code: format!("rule_{i}"),
+                    severity: Severity::Error,
+                    message: "m".into(),
+                })
+                .collect(),
+        });
+        assert!(adr.upsert_decision(d.clone(), false).is_err());
+
+        d = sample(DecisionStatus::Draft);
+        d.policy = Some(AdrPolicy {
+            mode: PolicyMode::Enforce,
+            forbid: vec![AdrForbidRule {
+                from_kind: ElementKind::Person,
+                to_kind: ElementKind::Code,
+                code: "ok_rule".into(),
+                severity: Severity::Error,
+                message: " ".into(),
+            }],
+        });
+        assert!(adr.upsert_decision(d, false).is_err());
+
+        adr.upsert_decision(sample(DecisionStatus::Proposed), false)
+            .unwrap();
+        let err = adr
+            .set_decision_status(
+                "w",
+                "0001-use-sqlite",
+                DecisionStatus::Rejected,
+                Some(&"x".repeat(2001)),
+                None,
+                false,
+            )
+            .unwrap_err();
+        assert!(err.to_string().contains("2000"));
+
+        assert!(adr.worktree("missing-ws").is_err());
+    }
+
+    #[test]
+    fn accepted_refresh_keeps_status_without_agent_gate() {
+        let (_dir, adr, _) = setup();
+        adr.upsert_decision(sample(DecisionStatus::Proposed), false)
+            .unwrap();
+        adr.set_decision_status(
+            "w",
+            "0001-use-sqlite",
+            DecisionStatus::Accepted,
+            None,
+            None,
+            false,
+        )
+        .unwrap();
+        let mut d = sample(DecisionStatus::Accepted);
+        d.consequences = "Updated consequences.".into();
+        let (out, _) = adr.upsert_decision(d, false).unwrap();
+        assert_eq!(out.status, DecisionStatus::Accepted);
+        assert_eq!(out.consequences, "Updated consequences.");
+    }
 }

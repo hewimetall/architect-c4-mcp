@@ -473,6 +473,18 @@ mod tests {
                 members: vec![],
             })
             .unwrap();
+        let err_to = model
+            .upsert_relationship(Relationship {
+                id: "r-missing-to".into(),
+                workspace_id: "w".into(),
+                from_id: "a".into(),
+                to_id: "missing".into(),
+                description: Some("Uses".into()),
+                technology: None,
+            })
+            .unwrap_err();
+        assert!(err_to.to_string().contains("to_id"));
+
         model
             .upsert_element(Element {
                 id: "b".into(),
@@ -584,5 +596,49 @@ mod tests {
         assert!(model.delete_relationship("w", "r-bad").is_err());
         let hist = rev.history("w", EntityType::Relationship, "r-bad").unwrap();
         assert!(hist.iter().any(|r| r.change_kind == ChangeKind::Delete));
+    }
+
+    #[test]
+    fn clear_workspace_drops_elements_and_relationships() {
+        let (_rev, model) = stores();
+        model
+            .upsert_element(Element {
+                id: "a".into(),
+                workspace_id: "w".into(),
+                kind: ElementKind::Person,
+                parent_id: None,
+                name: "A".into(),
+                description: None,
+                technology: None,
+                url: None,
+                members: vec![],
+            })
+            .unwrap();
+        model
+            .upsert_element(Element {
+                id: "b".into(),
+                workspace_id: "w".into(),
+                kind: ElementKind::SoftwareSystem,
+                parent_id: None,
+                name: "B".into(),
+                description: None,
+                technology: None,
+                url: None,
+                members: vec![],
+            })
+            .unwrap();
+        model
+            .upsert_relationship(Relationship {
+                id: "r1".into(),
+                workspace_id: "w".into(),
+                from_id: "a".into(),
+                to_id: "b".into(),
+                description: Some("uses".into()),
+                technology: None,
+            })
+            .unwrap();
+        model.clear_workspace("w").unwrap();
+        assert!(model.list_elements("w").unwrap().is_empty());
+        assert!(model.list_relationships("w").unwrap().is_empty());
     }
 }
