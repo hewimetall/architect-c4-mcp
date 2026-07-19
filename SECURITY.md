@@ -14,7 +14,7 @@ This repo is intended to be public. **Do not commit:**
 | Tokens | vmcp bearer tokens, `tokens.json`, API keys |
 | Passwords | SSH passwords, argon2 master hashes with real salts |
 | Private keys | `*.pem`, `id_rsa`, TLS material |
-| Local data | `.data/`, SQLite DBs with real models |
+| Local data | `.data/`, product `docs/` trees with proprietary models |
 | Env files | `.env`, `.env.local` |
 
 Deploy templates under `infra/deploy/` use placeholders:

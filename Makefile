@@ -1,10 +1,9 @@
 RUST_CRATES := \
 	packages/architect-c4-domain \
-	packages/architect-c4-revision \
-	packages/architect-c4-session \
 	packages/architect-c4-model \
 	packages/architect-c4-git \
 	packages/architect-c4-adr \
+	packages/architect-c4-flow \
 	packages/architect-c4-validate \
 	packages/architect-c4-render
 

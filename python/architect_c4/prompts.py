@@ -32,7 +32,7 @@ def register_prompts(mcp: Any) -> None:
                 "3. validate_model → get_view_links",
                 "4. git add docs && commit на хосте",
                 "",
-                "На диске только docs/**/*.toml. SQLite в репо продукта нет.",
+                "На диске только docs/**/*.toml. Runtime без SQLite.",
             ]
         )
 

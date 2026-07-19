@@ -5,8 +5,6 @@ set -euo pipefail
 
 CORE=(
   architect-c4-domain
-  architect-c4-revision
-  architect-c4-session
   architect-c4-model
   architect-c4-git
   architect-c4-adr

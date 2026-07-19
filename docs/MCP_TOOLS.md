@@ -19,7 +19,7 @@ Happy path: `uvx architect-c4-mcp --docs /path/to/docs`, затем обычны
 |------|-------|
 | `upsert_element(id, kind, name, parent_id?, description?, technology?, url?, members?)` | `kind`: person, software_system, container, component, code, external. Пишет `docs/model.toml` через очередь |
 | `upsert_relationship(id, from_id, to_id, description?)` | оба конца должны существовать |
-| `delete_relationship(id)` | tombstone + revision |
+| `delete_relationship(id)` | удаляет связь и переписывает `docs/model.toml` |
 | `get_model()` | elements, relationships, decisions |
 | `validate_model()` | проблемы по слоям |
 

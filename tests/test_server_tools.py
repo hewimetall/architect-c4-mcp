@@ -559,3 +559,30 @@ def test_rebind_clears_stale_model(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     server.bind_docs(str(b))
     ids = {e["id"] for e in server.get_model()["elements"]}
     assert "only-in-a" not in ids
+
+
+def test_reinit_reloads_model_from_toml(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """FS is SoT: fresh init + bind_docs must restore upserted elements from model.toml."""
+    monkeypatch.setenv("ARCHITECT_C4_DATA", str(tmp_path / "data"))
+    monkeypatch.delenv("ARCHITECT_C4_DOCS", raising=False)
+    if hasattr(server._ensure_init, "_done"):
+        delattr(server._ensure_init, "_done")
+    product = tmp_path / "product"
+    docs = product / "docs"
+    docs.mkdir(parents=True)
+    _git_init(product)
+    native.init(str(tmp_path / "data"))
+    server._ensure_init._done = True  # type: ignore[attr-defined]
+    server.bind_docs(str(docs))
+    server.upsert_element("sys", "software_system", "Sys", description="persisted")
+    assert (docs / "model.toml").is_file()
+    raw = (docs / "model.toml").read_text(encoding="utf-8")
+    assert "sys" in raw
+
+    # Simulate process restart: new native.init clears HashMap, bind reloads TOML.
+    native.init(str(tmp_path / "data2"))
+    server.bind_docs(str(docs))
+    ids = {e["id"] for e in server.get_model()["elements"]}
+    assert "sys" in ids
+    el = next(e for e in server.get_model()["elements"] if e["id"] == "sys")
+    assert el["name"] == "Sys"

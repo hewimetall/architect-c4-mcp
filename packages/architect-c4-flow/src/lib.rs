@@ -1,94 +1,49 @@
-//! Flow use-cases: rigid JSON in worktree + git commit fixation + SQL index.
+//! Flow use-cases: TOML on disk + optional git commit + in-memory index.
 
+use std::collections::HashMap;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 
-use architect_c4_domain::ports::{ElementExistsPort, FlowPort, GitPort, RevisionPort};
-use architect_c4_domain::{ChangeKind, DomainError, EntityType, Flow};
-use architect_c4_revision::SqliteRevisionStore;
+use architect_c4_domain::ports::{ElementExistsPort, FlowPort, GitPort};
+use architect_c4_domain::{DomainError, Flow};
 use parking_lot::Mutex;
-use rusqlite::{params, Connection, OptionalExtension};
+
+type Key = (String, String);
 
 pub struct FlowService {
-    conn: Arc<Mutex<Connection>>,
-    revisions: Arc<SqliteRevisionStore>,
+    flows: Mutex<HashMap<Key, Flow>>,
     git: Arc<dyn GitPort>,
     elements: Arc<dyn ElementExistsPort>,
-    worktrees: Mutex<std::collections::HashMap<String, PathBuf>>,
+    worktrees: Mutex<HashMap<String, PathBuf>>,
 }
 
 impl FlowService {
-    pub fn open(
-        path: &Path,
-        revisions: Arc<SqliteRevisionStore>,
-        git: Arc<dyn GitPort>,
-        elements: Arc<dyn ElementExistsPort>,
-    ) -> Result<Self, DomainError> {
-        let conn = Connection::open(path).map_err(map_sql)?;
-        let s = Self {
-            conn: Arc::new(Mutex::new(conn)),
-            revisions,
+    pub fn new(git: Arc<dyn GitPort>, elements: Arc<dyn ElementExistsPort>) -> Self {
+        Self {
+            flows: Mutex::new(HashMap::new()),
             git,
             elements,
-            worktrees: Mutex::new(std::collections::HashMap::new()),
-        };
-        s.migrate()?;
-        Ok(s)
-    }
-
-    pub fn open_in_memory(
-        revisions: Arc<SqliteRevisionStore>,
-        git: Arc<dyn GitPort>,
-        elements: Arc<dyn ElementExistsPort>,
-    ) -> Result<Self, DomainError> {
-        let conn = Connection::open_in_memory().map_err(map_sql)?;
-        let s = Self {
-            conn: Arc::new(Mutex::new(conn)),
-            revisions,
-            git,
-            elements,
-            worktrees: Mutex::new(std::collections::HashMap::new()),
-        };
-        s.migrate()?;
-        Ok(s)
+            worktrees: Mutex::new(HashMap::new()),
+        }
     }
 
     pub fn bind_worktree(&self, workspace_id: &str, path: PathBuf) {
         self.worktrees.lock().insert(workspace_id.to_string(), path);
     }
 
-    pub fn migrate(&self) -> Result<(), DomainError> {
-        self.conn
-            .lock()
-            .execute_batch(
-                r#"
-                CREATE TABLE IF NOT EXISTS flows (
-                  id TEXT NOT NULL,
-                  workspace_id TEXT NOT NULL,
-                  title TEXT NOT NULL,
-                  kind TEXT NOT NULL,
-                  body_json TEXT NOT NULL,
-                  path TEXT NOT NULL,
-                  git_commit_id TEXT,
-                  PRIMARY KEY (workspace_id, id)
-                );
-                "#,
-            )
-            .map_err(map_sql)?;
+    /// Drop in-memory flow index for a workspace (sidecar rebind). Does not touch disk.
+    pub fn clear_workspace(&self, workspace_id: &str) -> Result<(), DomainError> {
+        self.flows.lock().retain(|(ws, _), _| ws != workspace_id);
         Ok(())
     }
 
-    /// Drop in-memory flow index for a workspace (sidecar rebind). Does not touch disk.
-    pub fn clear_workspace(&self, workspace_id: &str) -> Result<(), DomainError> {
-        self.conn
-            .lock()
-            .execute(
-                "DELETE FROM flows WHERE workspace_id=?1",
-                params![workspace_id],
-            )
-            .map_err(map_sql)?;
-        Ok(())
+    /// Load flow already on disk into the in-memory index (no rewrite, no commit).
+    pub fn import_from_disk(&self, flow: Flow) -> Result<Flow, DomainError> {
+        self.validate_refs(&flow)?;
+        let key = (flow.workspace_id.clone(), flow.id.clone());
+        self.flows.lock().insert(key, flow.clone());
+        Ok(flow)
     }
 
     fn worktree(&self, workspace_id: &str) -> Result<PathBuf, DomainError> {
@@ -137,7 +92,6 @@ impl FlowService {
         &self,
         mut flow: Flow,
         commit: bool,
-        change: ChangeKind,
     ) -> Result<(Flow, Option<String>), DomainError> {
         self.validate_refs(&flow)?;
         let wt = self.worktree(&flow.workspace_id)?;
@@ -149,18 +103,6 @@ impl FlowService {
         }
         architect_c4_tomlio::write_flow_toml(&abs, &flow).map_err(DomainError::Message)?;
 
-        let exists = self
-            .conn
-            .lock()
-            .query_row(
-                "SELECT 1 FROM flows WHERE workspace_id=?1 AND id=?2",
-                params![flow.workspace_id, flow.id],
-                |_| Ok(true),
-            )
-            .optional()
-            .map_err(map_sql)?
-            .unwrap_or(false);
-
         let git_commit_id = if commit {
             Some(self.git.commit(
                 &wt,
@@ -171,77 +113,34 @@ impl FlowService {
             None
         };
         flow.git_commit_id = git_commit_id.clone();
-        let body = serde_json::to_string(&flow).map_err(|e| DomainError::Message(e.to_string()))?;
-
-        {
-            let conn = self.conn.lock();
-            conn.execute(
-                r#"INSERT INTO flows
-                   (id, workspace_id, title, kind, body_json, path, git_commit_id)
-                   VALUES (?1,?2,?3,?4,?5,?6,?7)
-                   ON CONFLICT(workspace_id, id) DO UPDATE SET
-                     title=excluded.title, kind=excluded.kind,
-                     body_json=excluded.body_json, path=excluded.path,
-                     git_commit_id=excluded.git_commit_id"#,
-                params![
-                    flow.id,
-                    flow.workspace_id,
-                    flow.title,
-                    flow.kind.as_str(),
-                    body,
-                    flow.path,
-                    flow.git_commit_id,
-                ],
-            )
-            .map_err(map_sql)?;
-        }
-
-        let kind = if exists { ChangeKind::Update } else { change };
-        self.revisions.append(
-            &flow.workspace_id,
-            EntityType::Flow,
-            &flow.id,
-            kind,
-            &body,
-            git_commit_id.as_deref(),
-        )?;
+        let key = (flow.workspace_id.clone(), flow.id.clone());
+        self.flows.lock().insert(key, flow.clone());
         Ok((flow, git_commit_id))
     }
 }
 
 impl FlowPort for FlowService {
     fn upsert_flow(&self, flow: Flow, commit: bool) -> Result<(Flow, Option<String>), DomainError> {
-        self.persist(flow, commit, ChangeKind::Create)
+        self.persist(flow, commit)
     }
 
     fn get_flow(&self, workspace_id: &str, id: &str) -> Result<Flow, DomainError> {
-        let body: String = self
-            .conn
+        self.flows
             .lock()
-            .query_row(
-                "SELECT body_json FROM flows WHERE workspace_id=?1 AND id=?2",
-                params![workspace_id, id],
-                |r| r.get(0),
-            )
-            .optional()
-            .map_err(map_sql)?
-            .ok_or_else(|| DomainError::NotFound(format!("flow {id}")))?;
-        serde_json::from_str(&body).map_err(|e| DomainError::Message(e.to_string()))
+            .get(&(workspace_id.to_string(), id.to_string()))
+            .cloned()
+            .ok_or_else(|| DomainError::NotFound(format!("flow {id}")))
     }
 
     fn list_flows(&self, workspace_id: &str) -> Result<Vec<Flow>, DomainError> {
-        let conn = self.conn.lock();
-        let mut stmt = conn
-            .prepare("SELECT body_json FROM flows WHERE workspace_id=?1 ORDER BY id")
-            .map_err(map_sql)?;
-        let rows = stmt
-            .query_map(params![workspace_id], |r| r.get::<_, String>(0))
-            .map_err(map_sql)?;
-        let mut out = Vec::new();
-        for r in rows {
-            let body = r.map_err(map_sql)?;
-            out.push(serde_json::from_str(&body).map_err(|e| DomainError::Message(e.to_string()))?);
-        }
+        let mut out: Vec<_> = self
+            .flows
+            .lock()
+            .values()
+            .filter(|f| f.workspace_id == workspace_id)
+            .cloned()
+            .collect();
+        out.sort_by(|a, b| a.id.cmp(&b.id));
         Ok(out)
     }
 
@@ -260,29 +159,11 @@ impl FlowPort for FlowService {
                 std::slice::from_ref(&rel),
             );
         }
-        self.conn
+        self.flows
             .lock()
-            .execute(
-                "DELETE FROM flows WHERE workspace_id=?1 AND id=?2",
-                params![workspace_id, id],
-            )
-            .map_err(map_sql)?;
-        let snap =
-            serde_json::to_string(&existing).map_err(|e| DomainError::Message(e.to_string()))?;
-        self.revisions.append(
-            workspace_id,
-            EntityType::Flow,
-            id,
-            ChangeKind::Delete,
-            &snap,
-            None,
-        )?;
+            .remove(&(workspace_id.to_string(), id.to_string()));
         Ok(())
     }
-}
-
-fn map_sql(e: rusqlite::Error) -> DomainError {
-    DomainError::Message(e.to_string())
 }
 
 #[cfg(test)]
@@ -342,8 +223,7 @@ mod tests {
         let wt = git
             .add_worktree(&bare, &dir.path().join("wt"), "main")
             .unwrap();
-        let rev = Arc::new(SqliteRevisionStore::open_in_memory().unwrap());
-        let flow = FlowService::open_in_memory(rev, git, allow(&["rgw", "client"])).unwrap();
+        let flow = FlowService::new(git, allow(&["rgw", "client"]));
         flow.bind_worktree("w", wt);
         (dir, flow)
     }
@@ -443,9 +323,8 @@ mod tests {
 
     #[test]
     fn requires_worktree() {
-        let rev = Arc::new(SqliteRevisionStore::open_in_memory().unwrap());
         let git: Arc<dyn GitPort> = Arc::new(GixGitAdapter::new());
-        let svc = FlowService::open_in_memory(rev, git, allow(&["rgw", "client"])).unwrap();
+        let svc = FlowService::new(git, allow(&["rgw", "client"]));
         assert!(svc.upsert_flow(sample(), false).is_err());
     }
 }

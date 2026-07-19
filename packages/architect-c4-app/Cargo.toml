@@ -13,8 +13,6 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 pyo3 = { workspace = true }
 architect-c4-domain = { workspace = true }
-architect-c4-revision = { workspace = true }
-architect-c4-session = { workspace = true }
 architect-c4-model = { workspace = true }
 architect-c4-git = { workspace = true }
 architect-c4-adr = { workspace = true }

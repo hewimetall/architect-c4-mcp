@@ -80,8 +80,6 @@ jobs:
           set -euo pipefail
           for d in \
             packages/architect-c4-domain \
-            packages/architect-c4-revision \
-            packages/architect-c4-session \
             packages/architect-c4-model \
             packages/architect-c4-git \
             packages/architect-c4-adr \

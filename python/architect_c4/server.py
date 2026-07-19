@@ -1,8 +1,8 @@
 """Slim FastMCP server: tools delegate to Rust composition root.
 
 Sidecar: mount product ``docs/`` via ``--docs`` / ``ARCHITECT_C4_DOCS``.
-Persist = TOML only. Writes go through an in-process Rust queue.
-SQLite indexes stay in-memory.
+Persist = TOML only. Runtime index = in-memory HashMap (no SQLite).
+Writes go through an in-process Rust queue.
 """
 
 from __future__ import annotations
@@ -93,7 +93,7 @@ def _apply_cli_env(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def _ensure_init() -> None:
-    # Ephemeral sidecar state dir (NOT the product repo). Indexes are in-memory.
+    # Ephemeral sidecar state dir (NOT the product repo). Runtime is HashMap-only.
     data = os.environ.get("ARCHITECT_C4_DATA", os.path.join(os.getcwd(), ".data"))
     if not getattr(_ensure_init, "_done", False):
         native.init(data)
