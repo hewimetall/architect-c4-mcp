@@ -846,7 +846,10 @@ mod tests {
             .unwrap();
         assert_eq!(d.status, DecisionStatus::Accepted);
         assert!(cid.is_none());
-        assert_eq!(adr.get_decision("w", "0001-use-sqlite").unwrap().title, "Use SQLite");
+        assert_eq!(
+            adr.get_decision("w", "0001-use-sqlite").unwrap().title,
+            "Use SQLite"
+        );
     }
 
     #[test]
