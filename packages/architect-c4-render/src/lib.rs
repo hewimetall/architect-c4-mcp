@@ -3028,8 +3028,8 @@ mod tests {
                     flows: 3,
                 },
                 WorkspaceCard {
-                    id: "architect-c4-self".into(),
-                    project_id: "architect-c4-self".into(),
+                    id: "demo-workspace".into(),
+                    project_id: "demo".into(),
                     ref_name: "main".into(),
                     elements: 4,
                     relationships: 1,

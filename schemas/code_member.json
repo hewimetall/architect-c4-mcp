@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://architecture.runmcp.ru/schemas/code_member.json",
+  "$id": "https://architect-c4.dev/schemas/code_member.json",
   "title": "CodeMember",
   "description": "Structured UML class member for architect-c4 kind=code elements.",
   "oneOf": [

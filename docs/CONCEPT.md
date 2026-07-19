@@ -2,9 +2,6 @@
 
 Сервис рядом с чужим git-репозиторием. Архитектура пишется **только** в его `docs/`.
 
-Эталон модели:  
-https://architecture.runmcp.ru/view?mode=all&renderer=wasm
-
 ---
 
 ## Зачем
@@ -121,7 +118,7 @@ context/decision/consequences = GFM (таблицы, код, списки). Бе
 |------|-----|
 | domain, app, validate, policy, render | SQLite / JSON как SoT в `docs/` |
 | model / adr / flow → TOML + очередь | workspace / bare git / worktree в API |
-| git — commit на хосте в репо продукта | research-заметки в поставке |
+| git — commit на хосте в репо продукта | посторонние заметки в поставке |
 | Mermaid viewer по умолчанию | WASM в базовом образе |
 
 ---
