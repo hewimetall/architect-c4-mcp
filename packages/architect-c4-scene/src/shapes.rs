@@ -1,11 +1,11 @@
 //! Compact C1→C4 shell packing: shape catalog + pick-min-cost Embed.
 //!
-//! Research notes (see docs/research/olympiad-c4-shapes.md):
+//! Shape packing notes:
 //! - ELK Layered/box: hierarchical + orthogonal (inspiration; not a dep)
 //! - Squarified treemaps (Bruls): compact sibling packing / aspect
 //! - Polyomino packing: compact placement of unequal rects
 //!
-//! Chat lessons: never force infinite Row (no_wrap); never glue edges;
+//! Never force infinite Row (no_wrap); never glue edges;
 //! prefer mid-gap short links for geometric neighbors.
 
 use std::cmp::Ordering;

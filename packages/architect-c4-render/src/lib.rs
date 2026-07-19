@@ -608,7 +608,7 @@ fn class_members(description: Option<&str>) -> Vec<String> {
     class_members_from_element(&el)
 }
 
-/// Structured legend card (C4 / classDiagram) — research: Structurizr + mermaid-studio contrast rules.
+/// Structured legend card (C4 / classDiagram) — Structurizr + mermaid-studio contrast rules.
 pub fn legend_block(layer: C4Layer) -> String {
     let (title, items): (&str, &[(&str, &str, &str)]) = match layer {
         C4Layer::Context | C4Layer::Landscape => (
@@ -659,7 +659,7 @@ pub fn legend_block(layer: C4Layer) -> String {
     )
 }
 
-/// Mermaid `base` themeVariables per layer (mcpwork research → pastel + dark text).
+/// Mermaid `base` themeVariables per layer (pastel fills + dark text).
 pub fn mermaid_theme_vars(layer: C4Layer) -> &'static str {
     match layer {
         C4Layer::Code => {
@@ -1418,7 +1418,7 @@ pub fn view_html(
         }});
         ro.observe(stage);
         fit();
-        console.info('architect-c4 renderer', {{ prefer: pref, backend, fit: 'ResizeObserver contain', refs: 'docs/research/viewport-fit-resize.md' }});
+        console.info('architect-c4 renderer', {{ prefer: pref, backend, fit: 'ResizeObserver contain' }});
       }} catch (err) {{
         console.error('architect-c4-wasm boot failed', err);
         setStatus('WASM failed: ' + err + ' — open Mermaid fallback below.', true);
@@ -1601,7 +1601,7 @@ pub fn view_html(
       const ro = new ResizeObserver(() => {{ if (!userZoomed) fit(); }});
       ro.observe(stage);
       fit();
-      console.info('architect-c4 mermaid fit', {{ mode: 'ResizeObserver contain', refs: 'docs/research/viewport-fit-resize.md' }});
+      console.info('architect-c4 mermaid fit', {{ mode: 'ResizeObserver contain' }});
     </script>"#,
             mermaid = html_escape(mermaid),
             theme_vars = theme_vars,

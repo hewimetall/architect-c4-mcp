@@ -2,7 +2,6 @@
 """DEPRECATED for live process — use MCP tools/call via scripts/mcp_architect_client.py.
 
 This file is an offline fallback only. Do not hardcode model data into the PR as the workflow.
-See docs/research/ceph-c4-mcp-notes.md.
 """
 
 ## Status
